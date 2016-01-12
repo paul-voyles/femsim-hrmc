@@ -2,11 +2,9 @@
 
 program hrmc
 
-    use omp_lib
     use hrmc_global
     use readinputs
     use model_mod
-    use gr_mod
     use fem_mod
     use hrmc_functions
     use eam_mod
@@ -18,7 +16,6 @@ program hrmc
     character (len=256) :: param_filename
     character (len=256) :: eam_filename
     character (len=256) :: jobID, c, step_str
-    character (len=512) :: comment
     character (len=256) :: time_elapsed, vki_fn, vkf_fn, output_model_fn, final_model_fn, chi_squared_file, acceptance_rate_fn, femfile
     character (len=256) :: paramfile_restart
     real :: temperature
@@ -42,7 +39,6 @@ program hrmc
     double precision :: te1, te2
     logical :: square_pixel, accepted, use_hrmc
     integer :: ipvd, nthr
-    doubleprecision :: t0, t1, t2 !timers
     real :: x! This is the parameter we will use to fit vsim to vas.
     integer, dimension(100) :: acceptance_array
     real :: avg_acceptance = 1.0
@@ -50,15 +46,15 @@ program hrmc
     character(3), dimension(118) :: syms
 
     syms = (/ "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",  &
-    "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V",    &
-    "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br",&
-    "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", &
-    "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", &
-    "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",&
-    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", &
-    "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", &
-    "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh",&
-    "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo" /)
+        "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V",    &
+        "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br",&
+        "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", &
+        "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", &
+        "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",&
+        "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", &
+        "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", &
+        "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh",&
+        "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo" /)
 
     !------------------- Program setup. -----------------!
 
@@ -66,13 +62,13 @@ program hrmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
-    !nthr = omp_get_max_threads()
-    if(myid.eq.0)then
-        write(*,*)
-        write(*,*) "Using", numprocs, "processors."
-        write(*,*) "OMP found a max number of threads of", nthr
-        write(*,*)
-    endif
+#ifdef FEMSIM
+    write(*,*) "Made FEMSIM"
+    use_hrmc = .FALSE.
+#else
+    write(*,*) "Made HRMC"
+    use_hrmc = .TRUE.
+#endif
 
     if(myid .eq. 0) then
         call get_command_argument(1, c, length, istat)
@@ -112,16 +108,13 @@ program hrmc
     call mpi_bcast(param_filename, 256, MPI_CHARACTER, 0, mpi_comm_world, mpierr)
     if(myid.eq.0) write(*,*) "Paramfile: ", trim(param_filename)
     
-    ! Start timer.
-    !t0 = omp_get_wtime()
-
     ! Read input parameters
     call read_inputs(param_filename,model_filename, femfile, eam_filename, step_start, step_end, temp_move_decrement, temperature, max_move, cutoff_r, iseed2, alpha, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, scale_fac_initial, Q, status2)
     temperature = temperature*(sqrt(0.7)**(step_start/temp_move_decrement))
     max_move = max_move*(sqrt(0.94)**(step_start/temp_move_decrement))
 
     ! Read input model
-    call read_model(model_filename, comment, m, istat)
+    call read_model(model_filename, m, istat)
     call check_model(m, istat)
     call recenter_model(0.0, 0.0, 0.0, m)
 
@@ -135,12 +128,6 @@ program hrmc
     nk = size(k)
     beta=1./((8.6171e-05)*temperature)
     square_pixel = .TRUE. ! HRMC uses square pixels, not round.
-
-#ifdef FEMSIM
-    use_hrmc = .FALSE.
-#else
-    use_hrmc = .TRUE.
-#endif
 
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
@@ -161,10 +148,7 @@ program hrmc
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
-    !t1 = omp_get_wtime()
     if(myid.eq.0)then
-        write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
-
         ! Write initial vk 
         open(unit=52,file=trim(vki_fn),form='formatted',status='unknown')
             do i=1, nk
@@ -217,7 +201,6 @@ program hrmc
         endif
 
 
-        !t0 = omp_get_wtime()
         ! HRMC loop begins. The loop never stops.
         do while (i .le. step_end)
 

@@ -11,18 +11,16 @@ module fem_mod
 
     implicit none
     private
-    public :: fem_initialize, fem, I_average !for femsim
-    public:: fem_update, fem_accept_move, fem_reject_move !for hrmc
-    public :: write_intensities
-    public :: write_time_in_int, print_sampled_map
-    !public :: print_image1, print_image2
+    public :: fem_initialize, fem ! for femsim
+    public:: fem_update, fem_accept_move, fem_reject_move ! for hrmc
+    public :: print_sampled_map
     type pos_list
         integer :: nat
-        real, allocatable, dimension(:,:) :: pos ! 3xnat array containing positions of atoms
+        real, allocatable, dimension(:,:) :: pos ! 3 x nat array containing positions of atoms
     end type pos_list
     integer, save :: nk  ! number of k points
     integer, save, public :: nrot  ! number of rotations
-    type pix_array
+    type pix_array  ! pixel array class
         real, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
         real :: phys_diam
@@ -35,19 +33,11 @@ module fem_mod
     real, save, allocatable, dimension(:) :: j0, A1                                               
     type(model), save, dimension(:), pointer, public :: mrot  ! array of rotated models
     type(model), save, public :: rot_atom  ! used for rotating a single atom, overwritten every time
-    type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
-    type(pix_array), save, public :: pa
-
-    real, save :: time_in_int = 0.0
+    type(pix_array), save, public :: pa  ! pixel array instance
 
 contains
-
-    subroutine write_time_in_int(x)
-        integer, intent(in) :: x
-        write(*,*) "Elapsed CPU time in Intensity:", time_in_int
-    end subroutine write_time_in_int
 
     subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat, square_pixel)
         type(model), intent(in) :: m 
@@ -82,7 +72,7 @@ contains
             return
         endif
 
-        !calculating bessel function
+        ! initializing bessel function
         j0=0.0
         do i=1, const4
             b_x = i*fem_bin_width
@@ -113,7 +103,6 @@ contains
         ! rot_i should never be used so I wont allocate or deal with it.
         allocate(rot_atom%xx%ind(10), rot_atom%yy%ind(10), rot_atom%zz%ind(10), &
             rot_atom%znum%ind(10), rot_atom%znum_r%ind(10), stat=istat)
-            !rot_atom%znum%ind(10), rot_atom%rot_i(rot_at10), rot_atom%znum_r%ind(10), stat=istat)
         rot_atom%xx%nat = rot_atom%natoms
         rot_atom%yy%nat = rot_atom%natoms
         rot_atom%zz%nat = rot_atom%natoms
@@ -134,14 +123,13 @@ contains
                 scatfact_e(j,i)=f_e(m%atom_type(j),k(i))
             enddo
         enddo
-
     end subroutine fem_initialize
+
 
     subroutine bessel_func(x,bj0,bj1)
         IMPLICIT none 
         doubleprecision A,B,A1,B1,BJ0,BJ1,BY0,BY1,DY0,DY1,X,X2,RP2,DJ0,DJ1,R,DABS
         doubleprecision EC,CS0,W0,R0,CS1,W1,R1,T1,T2,P0,P1,Q0,Q1,CU,DCOS,DSIN
-        !integer i,j,k,l,m,n,k0
         integer k,k0 
         DIMENSION A(12),B(12),A1(12),B1(12)
 
@@ -253,6 +241,7 @@ contains
         RETURN
     end subroutine bessel_func
 
+
     subroutine init_rot(ntheta, nphi, npsi, num_rot, istat)
     ! Calculates the rotation angles and initializes them into the global
     ! rotation array rot. The rot_temp variable is probably unnecessary.
@@ -332,6 +321,7 @@ contains
         deallocate(rot_temp)
     end subroutine init_rot
 
+
     subroutine init_pix(m, res, istat, square_pixel)
         type(model), intent(in) :: m
         real, intent(in) :: res
@@ -344,13 +334,13 @@ contains
         else
             pa%phys_diam = res
         endif
-        if( pa%phys_diam - m%lx > 0) then !Rounding error.
-            pa%phys_diam = m%lx !TODO Something weird
-            ! was going on here if I didn't do this. It was a result of pa%phys_diam being
-            ! larger than m%lx by a tiny amount due to rounding errors from the
-            ! inputs. Not sure how best to fix it right now.
+        if( pa%phys_diam - m%lx > 0) then ! Rounding error.
+            pa%phys_diam = m%lx
+            ! Something weird was going on here if I didn't do this. It was a
+            ! result of pa%phys_diam being larger than m%lx by a tiny amount
+            ! due to rounding errors from the inputs. This seems to work.
             write(0,*)
-            write(0,*) "WARNING: There was a rounding error in init_pix, it was manually corrected but you should check to make sure nothing funny is happening."
+            write(0,*) "WARNING: There was a rounding error in init_pix, it was manually corrected but you should check to make sure you don't have things set up so that your pixel diameter is larger than your model."
             write(0,*)
         endif
         pa%npix_1D = floor( m%lx / pa%phys_diam )
@@ -388,76 +378,6 @@ contains
         endif
     end subroutine init_pix
 
-    subroutine write_intensities(outfile, k, istat)
-        character(len=*), intent(in) :: outfile
-        real, dimension(:), intent(in) :: k 
-        integer, intent(out) :: istat
-        integer :: ik, irot, ipix 
-
-        istat = 0
-        open(unit=314, file=outfile, form='formatted',status='replace',iostat=istat)
-        call check_allocation(istat, 'Cannot open intensities output file')
-        do ik=1, nk
-            if(ik /= 1) write (314,*) ' '
-            write (314,*) 'k =',k(ik)
-            write (314,*) 'theta  phi   psi  pix_x   pix_y  intensity'
-            do irot=1, nrot 
-                do ipix=1, pa%npix 
-                   write (314,'(G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)') rot(irot, 1), rot(irot, 2), & 
-                   rot(irot, 3), pa%pix(ipix, 1), pa%pix(ipix, 2), int_i(ik, ipix, irot)
-                enddo
-            enddo
-        enddo
-        close(314)
-    end subroutine write_intensities
-
-    subroutine i_average(i_k)
-        implicit none
-        real ,dimension(:), intent(out) :: i_k
-        integer i
-
-        i_k = 0.0
-        do i=1, nk
-            i_k(i) = sum(int_i(i,1:pa%npix,1:nrot))/(pa%npix * nrot)
-        enddo
-    end subroutine i_average
-
-    subroutine rotation_for_checking(m)
-        implicit none
-        type(model), intent(in) :: m
-        integer :: i, istat
-        do i=myid+1, nrot, numprocs
-            call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mcopy(i), istat)
-            call check_allocation(istat, 'Failed to rotate model')
-            mcopy(i)%id = i
-        enddo
-    end subroutine rotation_for_checking
-
-    subroutine ompare_models(m1,m2)
-        ! Name 'compare_models' didn't work.
-        implicit none
-        type(model), intent(in) :: m1,m2
-        integer :: i,j
-        logical :: found
-        if(m1%natoms .ne. m2%natoms) then
-            write(*,*) "ERROR! Models do not even have the same number of atoms.", m1%natoms, m2%natoms
-            stop
-        endif
-        do i=1, m1%natoms
-            found = .false.
-            do j=1,m2%natoms
-                if(m1%xx%ind(i) .eq. m2%xx%ind(j) .and. m1%yy%ind(i) .eq.  m2%yy%ind(j) .and. m1%zz%ind(i) .eq. m2%zz%ind(j) ) then
-                    found = .true.
-                    exit
-                endif
-            enddo
-            if( .not. found) then
-                write(*,*) "ERROR! Couldn't find atom",i,"in other model."
-                write(*,*) "Position of atom i in model 1 is", m1%xx%ind(i), m1%yy%ind(i), m1%zz%ind(i)
-                stop
-            endif
-        enddo
-    end subroutine ompare_models
 
     subroutine fem(m, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, rot_begin, rot_end)
         use mpi
@@ -471,7 +391,7 @@ contains
         integer, intent(out) :: istat
         logical, optional, intent(in) :: square_pixel
         integer, optional, intent(in) :: rot_begin, rot_end
-        double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq  !mpi
+        double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
         integer :: i, j
         integer begin_rot, end_rot
@@ -502,7 +422,6 @@ contains
         psum_int_sq = 0.0
 
         ! initialize the rotated models
-        ! Also allocate room for mcopy - Jason 20130731
         allocate(mrot(nrot), stat=istat)
         call check_allocation(istat, 'Cannot allocate rotated model array.')
 
@@ -547,13 +466,11 @@ contains
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+                Vk(i) = Vk(i) - v_background(i)  ! background subtraction
             end do
         endif
 
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-
-        time_in_int = 0.0 ! Reset for HRMC.
     end subroutine fem
 
     subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
@@ -567,12 +484,11 @@ contains
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
-        real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr re-ok -jwh
+        real, dimension(:,:,:), allocatable :: gr_i
         real, dimension(:), allocatable ::x1, y1, rr_a
         real, dimension(:,:), allocatable :: sum1
         real :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
         integer, pointer, dimension(:) :: pix_atoms, znum_r
-        !integer, allocatable, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
         integer :: bin_max, size_pix_atoms
         real, allocatable, dimension(:) :: rr_x, rr_y
@@ -581,24 +497,17 @@ contains
         double precision:: timer1, timer2
         integer :: nthr, thrnum
 
-        !timer1 = mpi_wtime()
-
         if(square_pixel) then
             sqrt1_2_res = SQRT(0.5) * res
-            !r_max = sqrt(8.0) * res
-            r_max = 2*res !small pixel inscribed in airy circle
+            r_max = 2*res ! small pixel inscribed in airy circle
             call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
             allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
         else
             sqrt1_2_res = res
-            r_max = 2*res     !assuming resolution=radius
+            r_max = 2*res     ! assuming resolution=radius
             call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         endif
         size_pix_atoms = size(pix_atoms)
-        !if(m_int%id .eq. 114) write(*,*) "FOR MODEL ID 114: natoms=", m_int%natoms
-        !if(m_int%id .eq. 114) write(*,*) "Size pix_atoms=", size_pix_atoms
-        !if(m_int%id .eq. 114) write(*,*) pix_atoms
-        !r_max = 6*res    !check cut-off effect on 05/11/2009
         bin_max = int(r_max/fem_bin_width)+1
 
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
@@ -617,21 +526,8 @@ contains
         const2 = 1/fem_bin_width
         const3 = TWOPI
 
-        !call omp_set_num_threads(4) ! We don't need this. As long as it is
-        ! never called we should automatically have the max number of
-        ! threads available in any parallel loop.
-
-        !!$omp parallel do
-        !do i=1,1
-            !nthr = omp_get_num_threads() !omp_get_max_threads()
-            !thrnum = omp_get_thread_num()
-            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
-        !enddo
-        !!$omp end parallel do
-
         ! Calculate sum1 for gr_i calculation in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -640,7 +536,6 @@ contains
                 rr_x(i) = ABS(x2)
                 rr_y(i) = ABS(y2)
                 rr_a(i)=sqrt(x2*x2 + y2*y2)
-                !if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
                 if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then !small pixel inscribed in Airy circle
                     k_1=0.82333
                     x1(i)=x2
@@ -649,9 +544,7 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -659,19 +552,16 @@ contains
                 y2=y2-m_int%ly*anint(y2/m_int%ly)
                 rr_a(i)=sqrt(x2*x2 + y2*y2)
                 if(rr_a(i).le.res)then
-                    !if(rr_a(i) .le. res*3.0)then !check cut-off effect
                     x1(i)=x2
                     y1(i)=y2
                     j=int(const1*rr_a(i))
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
         endif
 
         ! Calculate gr_i for int_i in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size_pix_atoms
@@ -686,21 +576,17 @@ contains
                             else
                                 t1=sum1(znum_r(i),i)
                                 t2=sum1(znum_r(j),j)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2
                             endif
                         endif
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
-                    !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
                     do j=i,size_pix_atoms
                         if(rr_a(j).le.res)then
-                            !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
                             x2=x1(i)-x1(j)
                             y2=y1(i)-y1(j)
                             rr=sqrt(x2*x2 + y2*y2)
@@ -711,16 +597,14 @@ contains
                             else
                                 t1=sum1(znum_r(i),i)
                                 t2=sum1(znum_r(j),j)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2
                             endif
                         endif
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
         endif
 
-        !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -731,21 +615,12 @@ contains
                 enddo
             end do
         end do
-        !!$omp end parallel do
 
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
         if(size(pix_atoms).gt.0) deallocate(pix_atoms)
         if(allocated(sum1))      deallocate(sum1)
         if(allocated(rr_x))      deallocate(rr_x, rr_y)
-
-        !timer2 = mpi_wtime()
-        !write (*,*) 'Intensity call took', timer2 - timer1!, 'seconds on processor', myid!, 'and core', thrnum
-        !time_in_int = time_in_int + timer2-timer1
-        !write (*,*) 'Total Elapsed CPU time in Intensity= ', time_in_int
-        !if(m_int%id .eq. 114) write(*,*) "Intensity for model:", m_int%id
-        !if(m_int%id .eq. 114) write(*,*) int_i
-        !if(m_int%id .eq. 114) write(*,*) "Intensity for model:", m_int%id, "complete."
     end subroutine intensity
 
 
@@ -835,7 +710,6 @@ contains
                 call remove_atom(mroti, atom, mroti%rot_i(atom)%ind(rot_atom%natoms+1) )
             enddo
         endif
-
     end subroutine move_atom_in_rotated_model
 
 
@@ -850,7 +724,7 @@ contains
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
-        double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq !mpi
+        double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
         type(model) :: moved_atom
         integer :: i, j, m, n, ntpix
@@ -866,8 +740,8 @@ contains
         ! Create a new model (moved_atom) with only one atom in it and put the
         ! position etc of the moved atom into it.
         allocate(moved_atom%xx%ind(1), moved_atom%yy%ind(1), moved_atom%zz%ind(1), &
-        moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
-        moved_atom%composition(1), stat=istat)
+            moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
+            moved_atom%composition(1), stat=istat)
         moved_atom%natoms = 1
         ! m_in%xx%ind, etc have already been updated by random_move so these are the
         ! new, moved atom positions.
@@ -1048,27 +922,24 @@ contains
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
+                Vk(i) = Vk(i) - v_background(i)   ! background subtraction
             end do
         endif
 
         deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
-        !call destroy_model(moved_atom) ! Memory leak?
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
         !write(*,*) "I am core", myid, "and I am done with fem_update."
     end subroutine fem_update
+
 
     subroutine fem_accept_move(comm)
     ! Accept the move.  The atom positions are already changed in the rotated
     ! models, so we only need to clear old_index and old_pos arrays for reuse.
         use mpi
         integer :: comm, j
-        !do j=myid+1, nrot, numprocs ! Added by Jason 20130731
-        !    call destroy_model(mcopy(j))
-        !    call copy_model(mrot(j), mcopy(j))
-        !enddo
         call fem_reset_old(comm)
     end subroutine fem_accept_move
+
 
     subroutine fem_reset_old(comm)
         use mpi
@@ -1081,9 +952,9 @@ contains
         enddo
     end subroutine fem_reset_old
 
+
     subroutine fem_reject_move(m, atom, xx_cur, yy_cur, zz_cur, comm) !, iii)
     ! Reject the move. If the atom was simply moved, unmove it using old_pos and old_index.
-    ! If the atom appeared or disappeared we will use mcopy to replace mrot for each rotation.
         use mpi
         type(model), intent(in) :: m ! Just in because we undo the move elsewhere
         integer, intent(in) :: atom
@@ -1096,8 +967,8 @@ contains
         ! Create a new model (moved_atom) with only one atom in it and put the
         ! position etc of the moved atom into it.
         allocate(moved_atom%xx%ind(1), moved_atom%yy%ind(1), moved_atom%zz%ind(1), &
-        moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
-        moved_atom%composition(1), stat=istat)
+            moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
+            moved_atom%composition(1), stat=istat)
         moved_atom%natoms = 1
         ! mn%xx%ind, etc have already been updated by random_move so these are the
         ! new, moved atom positions.
@@ -1114,7 +985,7 @@ contains
         moved_atom%composition(1) = 1.0
         moved_atom%rotated = .FALSE.
 
-!write(*,*) "Un-moving atom in rotated models"
+        !write(*,*) "Un-moving atom in rotated models"
         do i=myid+1, nrot, numprocs
             !write(*,*) "Model", i, "has old_index%nat=", old_index(i)%nat
             if(.not. old_index(i)%nat == 0) then
@@ -1131,19 +1002,6 @@ contains
         enddo
         call fem_reset_old(comm)
     end subroutine fem_reject_move
-
-    subroutine checkers(m)
-        ! Stupd name but i needed one
-        ! Runs compare_models to make sure they are the same
-        type(model), intent(in) :: m
-        integer :: i
-        !write(*,*) "Rotating..."
-        call rotation_for_checking(m)
-        do i=myid+1, nrot, numprocs
-            !write(*,*) "Comparing models...", i
-            call ompare_models(mrot(i),mcopy(i))
-        enddo
-    end subroutine checkers
 
 
     subroutine add_pos(p, xx, yy, zz, istat)
@@ -1180,29 +1038,19 @@ contains
 
 
     subroutine print_sampled_map(m, res, square_pixel)
-    ! Prints a "map" of the model with the numbers pertaining to the number of
-    ! times atom i will be sampled in the femsim algorithm over the entire
-    ! model (using pixels). Ideally, all numbers will be 1. A 0 means that atom
-    ! is not included in the simulation at all, and a 2 means an atoms is
-    ! sampled twice as much as an atom with a 1.
-    ! Currently not working.
         type(model), intent(in) :: m
         real, intent(in) :: res
         logical, intent(in) :: square_pixel
         integer, dimension(:,:), allocatable :: map
-        integer, dimension(:), allocatable :: sampled_atoms ! This array is of size natoms,
-        ! is initialized to 0, and position i is incremented every time atom i is used
-        ! in the intensity calcuation. This is to see which parts of the model are
-        ! lacking / overused in the simulation.
+        integer, dimension(:), allocatable :: sampled_atoms
         integer, pointer, dimension(:):: pix_atoms
-        !integer, allocatable, dimension(:):: pix_atoms
         integer :: i, j, istat, x, y
         character(len=256) :: buffer
         character(len=2) :: str
         real, dimension(:), allocatable :: rr_a
         real, allocatable, dimension(:) :: rr_x, rr_y
         real :: sqrt1_2_res
-        real :: x2, y2!, rr, t1, t2, const1, const2, const3, pp, r_max
+        real :: x2, y2
 
         if(square_pixel) then
             sqrt1_2_res = SQRT(0.5) * res
@@ -1217,9 +1065,9 @@ contains
         map = 0
 
         write(*,*)
-        write(*,*) "Each row and column below represent", m%lx/ceiling(m%lx), "Angstroms."
+        write(*,*) "Each row and column below represents", m%lx/ceiling(m%lx), "Angstroms."
         write(*,*) "Dashes represent 0's (for easier viewing) and *'s represent numbers over 9."
-        write(*,*) "Numbers indicate the number of atoms at that physical location in the model that are being sampled by a single femsim run."
+        write(*,*) "Numbers indicate the number of atoms at that physical location in the model that are being sampled by a single femsim run (in the 2D projection)."
         if(.not. square_pixel) write(*,*) "The hard cutoffs along the edges are probably due to the hard cutoff of the hutches. You might get an atom sneak in if it's right on the inner edge of a hutch I'm guessing. I could be wrong here, however."
 
         do i=1, pa%npix

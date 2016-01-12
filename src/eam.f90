@@ -1,7 +1,3 @@
-! eam module: subroutines for calculating initial eam potential and updating energy after the mc move.
-! Written by Jinwoo Hwang 08/10/2009
-! Cleaned up by Jason on 07/02/2013
-
 module eam_mod
 
     use model_mod 
@@ -172,61 +168,7 @@ contains
         do i=1, m%natoms
             te1 = te1 + e1(i)
         enddo
-        !write(*,*)"initial energy=", te1
     end subroutine eam_initial
-
-
-    ! Calculates initial energy of model using eam potential without hutch
-    ! Currently never called.
-    subroutine eam_initial_no_hutch(m, te1)
-        implicit none
-        type(model), intent(in) :: m
-        integer :: i, j
-        integer:: nlist, rbin, rhobin
-        real :: xij, yij, zij, r, r2
-        real :: phi1, phi2, rho1, rho2
-        real, intent(out) :: te1
-        integer :: istat
-
-        allocate(e1(m%natoms))
-        allocate(e2(m%natoms))
-        do i=1, m%natoms
-            phi2 = 0.0
-            rho2 = 0.0
-            do j=1, m%natoms
-                if(j.ne.i)then
-                    xij = m%xx%ind(i) - m%xx%ind(j)
-                    yij = m%yy%ind(i) - m%yy%ind(j)         
-                    zij = m%zz%ind(i) - m%zz%ind(j)
-                    xij = xij-m%lx*anint(xij/(m%lx))                
-                    yij = yij-m%ly*anint(yij/(m%ly))            
-                    zij = zij-m%lz*anint(zij/(m%lz))
-                    r2 = xij**2+yij**2+zij**2
-                    if(r2.le.eam_max_r*eam_max_r)then
-                        r = sqrt(r2)
-                        rbin = int(r/dr)+1
-                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
-                        phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(j) , rbin)
-                        phi2 = phi2 + phi1
-                        rho1 = rho(m%znum_r%ind(i), rbin)
-                        rho2 = rho2 + rho1
-                    endif
-                endif
-            enddo
-            rhobin = int(rho2/drho)+1
-            if(rhobin.le.0)then
-                e1(i) = 0.5*phi2
-            else
-                e1(i) = f(m%znum_r%ind(i), rhobin) + 0.5*phi2
-            endif
-        enddo
-
-        te1=0.0
-        do i=1, m%natoms
-            te1 = te1 + e1(i)
-        enddo
-        !write(*,*)"initial energy=", te1
-    end subroutine eam_initial_no_hutch
 
 
     ! Calculates initial energy of model using eam potential

@@ -1,6 +1,6 @@
 APP = ../hrmc
 
-SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem.f90 gr.f90 eam_fs.f90 hrmc.f90
+SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem.f90 eam.f90 hrmc.f90
 OBJ = $(addsuffix .o, $(basename $(SRC)))
 
 LIBS=
@@ -20,6 +20,10 @@ CC = icc
 opt: FCFLAGS = -O2 -openmp -fpp $(FEMSIM)
 
 debug: FCFLAGS = -g -debug all -check all -implicitnone -warn all -openmp -fpp $(FEMSIM)
+
+femsim: FEMSIM = -DFEMSIM
+femsim: FCFLAGS = -O2 -openmp -fpp $(FEMSIM)
+femsim: ${APP}
 
 ${APP}: ${OBJ}
 	${FC} ${OBJ} ${FCFLAGS} -o ${APP}
