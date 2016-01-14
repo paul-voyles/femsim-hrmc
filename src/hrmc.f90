@@ -154,7 +154,6 @@ program hrmc
     call read_eam(m,eam_filename)
     call eam_initial(m,te1)
     te1 = te1/m%natoms
-    if(myid .eq. 0) write(*,*) "Energy = ", te1
 
     !------------------- Start HRMC. -----------------!
 
@@ -162,12 +161,11 @@ program hrmc
 
         ! Calculate initial chi2
         chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
-
         chi2_initial = chi2_no_energy
         chi2_old = chi2_no_energy + te1
 
-        i=step_start
-        if(myid.eq.0)then
+        i = step_start
+        if(myid .eq. 0)then
             write(*,*)
             write(*,*) "Initialization complete. Starting Monte Carlo."
             write(*,*) "Initial Conditions:"
@@ -190,10 +188,10 @@ program hrmc
         endif
 
 
-        ! HRMC loop begins. The loop never stops.
+        ! HRMC loop begins.
         do while (i .le. step_end)
 
-            i = i+1
+            i = i + 1
             if(myid .eq. 0) write(*,*) "Starting step", i
 
             call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
@@ -231,17 +229,17 @@ program hrmc
             ! Test if the move should be accepted or rejected based on del_chi
             if(del_chi < 0.0) then
                 ! Accept the move
-                call fem_accept_move(mpi_comm_world)
+                call fem_accept_move()
                 e1 = e2 ! eam
                 chi2_old = chi2_new
                 accepted = .true.
                 if(myid.eq.0) write(*,*) "MC move accepted outright."
             else
                 ! Based on the random number above, even if del_chi is negative, decide
-                ! whether to move or not (statistically).
-                if(log(1.-randnum) < -del_chi*beta) then
+                ! whether to accept or not (probabalistically).
+                if(log(1.0-randnum) < -del_chi*beta) then
                     ! Accept move
-                    call fem_accept_move(mpi_comm_world)
+                    call fem_accept_move()
                     e1 = e2 ! eam
                     chi2_old = chi2_new
                     accepted = .true.
@@ -250,12 +248,14 @@ program hrmc
                     ! Reject move
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                    call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur, mpi_comm_world)
+                    call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur)
                     e2 = e1 ! eam
                     accepted = .false.
                     if(myid.eq.0) write(*,*) "MC move rejected."
                 endif
             endif
+
+            ! Everything after this line is data output to save information to disk
 
             if(myid .eq. 0) then
                 if(accepted) then

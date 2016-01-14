@@ -1,9 +1,3 @@
-!
-! This model was written by Jason Maldonis from the old fem1.f90 file on
-! 06/29/13.
-! See commit notes on Github for details. Username is refreshx2.
-!
-
 module fem_mod
     use  model_mod
     use  HRMC_Global
@@ -932,18 +926,17 @@ contains
     end subroutine fem_update
 
 
-    subroutine fem_accept_move(comm)
+    subroutine fem_accept_move()
     ! Accept the move.  The atom positions are already changed in the rotated
     ! models, so we only need to clear old_index and old_pos arrays for reuse.
         use mpi
-        integer :: comm, j
-        call fem_reset_old(comm)
+        call fem_reset_old()
     end subroutine fem_accept_move
 
 
-    subroutine fem_reset_old(comm)
+    subroutine fem_reset_old()
         use mpi
-        integer :: i, comm
+        integer :: i
         do i=myid+1, nrot, numprocs
             old_index(i)%nat = 0
             if(allocated(old_index(i)%ind)) deallocate(old_index(i)%ind)
@@ -953,14 +946,13 @@ contains
     end subroutine fem_reset_old
 
 
-    subroutine fem_reject_move(m, atom, xx_cur, yy_cur, zz_cur, comm) !, iii)
+    subroutine fem_reject_move(m, atom, xx_cur, yy_cur, zz_cur) !, iii)
     ! Reject the move. If the atom was simply moved, unmove it using old_pos and old_index.
         use mpi
         type(model), intent(in) :: m ! Just in because we undo the move elsewhere
         integer, intent(in) :: atom
         real, intent(in) :: xx_cur, yy_cur, zz_cur
         integer :: i, j, istat
-        integer :: comm
         type(model) :: moved_atom
         !integer, intent(in) :: iii
 
@@ -1000,7 +992,7 @@ contains
                 enddo
             endif
         enddo
-        call fem_reset_old(comm)
+        call fem_reset_old()
     end subroutine fem_reject_move
 
 
