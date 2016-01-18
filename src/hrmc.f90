@@ -213,45 +213,64 @@ program hrmc
             ! Calculate a randnum for accept/reject
             randnum = ran2(iseed2)
 
-            call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+            ! Decide whether to reject just based on the energy.
+            ! The fit to V(k) cannot be negative, so there is a lower
+            ! bound on chi2_no_energy (zero). So set it to 0 and check
+            ! if the energy is so bad that the no value of chi2_no_energy
+            ! can make the change in the objective function good enough
+            ! to be accepted.
+            accepted = .true.
+            if(log(1.0-randnum) > -(te2-chi2_old)*beta) then
+                accepted = .false.
+                call reject_position(m, w, xx_cur, yy_cur, zz_cur)
+                call hutch_move_atom(m, w, xx_cur, yy_cur, zz_cur)
+                e2 = e1
+                if(myid.eq.0) write(*,*) "MC move rejected solely due to energy."
+            endif
 
-            chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
-            chi2_new = chi2_no_energy + te2
-            del_chi = chi2_new - chi2_old
-            call mpi_bcast(del_chi, 1, mpi_double, 0, mpi_comm_world, mpierr)
+            if(accepted) then
+                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
-            if(myid .eq. 0) write(*,*) "Energy = ", te2
-            if(myid .eq. 0) write(*,*) "Del-V(k) = ", chi2_no_energy
-            if(myid .eq. 0) write(*,*) "Del-chi = ", del_chi
-            if(myid .eq. 0) write(*,*) "chi2_old = ", chi2_old
-            if(myid .eq. 0) write(*,*) "chi2_new = ", chi2_new
+                chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
+                chi2_new = chi2_no_energy + te2
+                del_chi = chi2_new - chi2_old
+                call mpi_bcast(del_chi, 1, mpi_double, 0, mpi_comm_world, mpierr)
 
-            ! Test if the move should be accepted or rejected based on del_chi
-            if(del_chi < 0.0) then
-                ! Accept the move
-                call fem_accept_move()
-                e1 = e2 ! eam
-                chi2_old = chi2_new
-                accepted = .true.
-                if(myid.eq.0) write(*,*) "MC move accepted outright."
-            else
-                ! Based on the random number above, even if del_chi is negative, decide
-                ! whether to accept or not (probabalistically).
-                if(log(1.0-randnum) < -del_chi*beta) then
-                    ! Accept move
+                if(myid .eq. 0) then
+                    write(*,*) "Energy = ", te2
+                    write(*,*) "Del-V(k) = ", chi2_no_energy
+                    write(*,*) "Del-chi = ", del_chi
+                    write(*,*) "chi2_old = ", chi2_old
+                    write(*,*) "chi2_new = ", chi2_new
+                endif
+
+                ! Test if the move should be accepted or rejected based on del_chi
+                if(del_chi < 0.0) then
+                    ! Accept the move
                     call fem_accept_move()
                     e1 = e2 ! eam
                     chi2_old = chi2_new
                     accepted = .true.
-                    if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                    if(myid.eq.0) write(*,*) "MC move accepted outright."
                 else
-                    ! Reject move
-                    call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-                    call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                    call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur)
-                    e2 = e1 ! eam
-                    accepted = .false.
-                    if(myid.eq.0) write(*,*) "MC move rejected."
+                    ! Based on the random number above, even if del_chi is negative, decide
+                    ! whether to accept or not (probabalistically).
+                    if(log(1.0-randnum) < -del_chi*beta) then
+                        ! Accept move
+                        call fem_accept_move()
+                        e1 = e2 ! eam
+                        chi2_old = chi2_new
+                        accepted = .true.
+                        if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                    else
+                        ! Reject move
+                        call reject_position(m, w, xx_cur, yy_cur, zz_cur)
+                        call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
+                        call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur)
+                        e2 = e1 ! eam
+                        accepted = .false.
+                        if(myid.eq.0) write(*,*) "MC move rejected."
+                    endif
                 endif
             endif
 
