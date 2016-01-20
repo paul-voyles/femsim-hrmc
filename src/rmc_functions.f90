@@ -33,7 +33,7 @@ CONTAINS
         double precision, pointer, dimension(:) :: vk
         real, intent(in) :: scale_fac
         integer, intent(in) ::nk
-        integer i, j
+        integer j
         integer nf   !normalization factor   - jwh 04/25/2009
         double precision :: chi_square
         chi_square=0.0

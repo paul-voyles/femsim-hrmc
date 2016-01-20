@@ -33,26 +33,20 @@ module fem_mod
 
 contains
 
-    subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat, square_pixel)
+    subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat)
         type(model), intent(in) :: m 
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k 
         integer, intent(in) :: nki, ntheta, nphi, npsi 
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, intent(in) :: square_pixel
         real r_max, const1, const2, const3
         integer bin_max
         integer i, j 
         integer const4 
         double precision b_x, b_j0 , b_j1 
 
-        if(square_pixel) then 
-            r_max = 2 * res !small pixel inscribed in Airy circle
-        else 
-            r_max = 2*res     !assuming resolution=radius
-        endif
-
+        r_max = 2 * res !small pixel inscribed in Airy circle
         bin_max = int(r_max/fem_bin_width)+1
 
         const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q) 
@@ -80,7 +74,7 @@ contains
         nk = nki
 
         call init_rot(ntheta, nphi, npsi, nrot, istat)
-        call init_pix(m, res, istat, square_pixel)
+        call init_pix(m, res, istat)
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
             int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
@@ -316,18 +310,14 @@ contains
     end subroutine init_rot
 
 
-    subroutine init_pix(m, res, istat, square_pixel)
+    subroutine init_pix(m, res, istat)
         type(model), intent(in) :: m
         real, intent(in) :: res
         integer, intent(out) :: istat
-        logical, intent(in) :: square_pixel
         integer :: i, j, k
 
-        if(square_pixel) then
-            pa%phys_diam = res * sqrt(2.0)
-        else
-            pa%phys_diam = res
-        endif
+        pa%phys_diam = res * sqrt(2.0)
+
         if( pa%phys_diam - m%lx > 0) then ! Rounding error.
             pa%phys_diam = m%lx
             ! Something weird was going on here if I didn't do this. It was a
@@ -373,7 +363,7 @@ contains
     end subroutine init_pix
 
 
-    subroutine fem(m, res, k, vk, scatfact_e, comm, istat, square_pixel, rot_begin, rot_end)
+    subroutine fem(m, res, k, vk, scatfact_e, comm, istat, rot_begin, rot_end)
         use mpi
         implicit none
         type(model), intent(in) :: m
@@ -382,19 +372,11 @@ contains
         double precision, dimension(:), INTENT(OUT) :: vk
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, optional, intent(in) :: square_pixel
         integer, optional, intent(in) :: rot_begin, rot_end
         double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
         integer :: i, j
         integer begin_rot, end_rot
-        logical :: pixel_square
-
-        if(present(square_pixel)) then
-            pixel_square = square_pixel
-        else
-            pixel_square = .FALSE.
-        endif
 
         if(present(rot_begin)) then
             begin_rot = rot_begin
@@ -444,7 +426,7 @@ contains
         do i=myid+1, nrot, numprocs
             do j=1, pa%npix
                 !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i, "with core", myid
-                call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+                call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat)
                 int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
@@ -465,7 +447,7 @@ contains
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
     end subroutine fem
 
-    subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
+    subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat)
     ! Calculates int_i for output.
         use  omp_lib
         include 'mpif.h'
@@ -475,7 +457,6 @@ contains
         double precision, dimension(nk), intent(inout) :: int_i
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, intent(in) :: square_pixel
         real, dimension(:,:,:), allocatable :: gr_i
         real, dimension(:), allocatable ::x1, y1, rr_a
         real, dimension(:,:), allocatable :: sum1
@@ -486,19 +467,12 @@ contains
         real, allocatable, dimension(:) :: rr_x, rr_y
         real :: sqrt1_2_res
         real :: k_1
-        double precision:: timer1, timer2
-        integer :: nthr, thrnum
 
-        if(square_pixel) then
-            sqrt1_2_res = SQRT(0.5) * res
-            r_max = 2*res ! small pixel inscribed in airy circle
-            call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
-        else
-            sqrt1_2_res = res
-            r_max = 2*res     ! assuming resolution=radius
-            call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-        endif
+        sqrt1_2_res = SQRT(0.5) * res
+        r_max = 2*res ! small pixel inscribed in airy circle
+        call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
+        allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
+
         size_pix_atoms = size(pix_atoms)
         bin_max = int(r_max/fem_bin_width)+1
 
@@ -519,83 +493,44 @@ contains
         const3 = TWOPI
 
         ! Calculate sum1 for gr_i calculation in next loop.
-        if(square_pixel) then
-            do i=1,size_pix_atoms
-                x2=m_int%xx%ind(pix_atoms(i))-px
-                y2=m_int%yy%ind(pix_atoms(i))-py
-                x2=x2-m_int%lx*anint(x2/m_int%lx)
-                y2=y2-m_int%ly*anint(y2/m_int%ly)
-                rr_x(i) = ABS(x2)
-                rr_y(i) = ABS(y2)
-                rr_a(i)=sqrt(x2*x2 + y2*y2)
-                if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then !small pixel inscribed in Airy circle
-                    k_1=0.82333
-                    x1(i)=x2
-                    y1(i)=y2
-                    j=int(const1*rr_a(i))
-                    sum1(znum_r(i),i)=A1(j)
-                endif
-            enddo
-        else
-            do i=1,size_pix_atoms
-                x2=m_int%xx%ind(pix_atoms(i))-px
-                y2=m_int%yy%ind(pix_atoms(i))-py
-                x2=x2-m_int%lx*anint(x2/m_int%lx)
-                y2=y2-m_int%ly*anint(y2/m_int%ly)
-                rr_a(i)=sqrt(x2*x2 + y2*y2)
-                if(rr_a(i).le.res)then
-                    x1(i)=x2
-                    y1(i)=y2
-                    j=int(const1*rr_a(i))
-                    sum1(znum_r(i),i)=A1(j)
-                endif
-            enddo
-        endif
+        do i=1,size_pix_atoms
+            x2=m_int%xx%ind(pix_atoms(i))-px
+            y2=m_int%yy%ind(pix_atoms(i))-py
+            x2=x2-m_int%lx*anint(x2/m_int%lx)
+            y2=y2-m_int%ly*anint(y2/m_int%ly)
+            rr_x(i) = ABS(x2)
+            rr_y(i) = ABS(y2)
+            rr_a(i)=sqrt(x2*x2 + y2*y2)
+            if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then !small pixel inscribed in Airy circle
+                k_1=0.82333
+                x1(i)=x2
+                y1(i)=y2
+                j=int(const1*rr_a(i))
+                sum1(znum_r(i),i)=A1(j)
+            endif
+        enddo
 
         ! Calculate gr_i for int_i in next loop.
-        if(square_pixel) then
-            do i=1,size_pix_atoms
-                if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
-                    do j=i,size_pix_atoms
-                        if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
-                            x2=x1(i)-x1(j)
-                            y2=y1(i)-y1(j)
-                            rr=sqrt(x2*x2 + y2*y2)
-                            kk=int(const2*rr)
-                            if(i == j)then
-                                t1=sum1(znum_r(i),i)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
-                            else
-                                t1=sum1(znum_r(i),i)
-                                t2=sum1(znum_r(j),j)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2
-                            endif
+        do i=1,size_pix_atoms
+            if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
+                do j=i,size_pix_atoms
+                    if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
+                        x2=x1(i)-x1(j)
+                        y2=y1(i)-y1(j)
+                        rr=sqrt(x2*x2 + y2*y2)
+                        kk=int(const2*rr)
+                        if(i == j)then
+                            t1=sum1(znum_r(i),i)
+                            gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
+                        else
+                            t1=sum1(znum_r(i),i)
+                            t2=sum1(znum_r(j),j)
+                            gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2
                         endif
-                    enddo
-                endif
-            enddo
-        else
-            do i=1,size_pix_atoms
-                if(rr_a(i).le.res)then
-                    do j=i,size_pix_atoms
-                        if(rr_a(j).le.res)then
-                            x2=x1(i)-x1(j)
-                            y2=y1(i)-y1(j)
-                            rr=sqrt(x2*x2 + y2*y2)
-                            kk=int(const2*rr)
-                            if(i == j)then
-                                t1=sum1(znum_r(i),i)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
-                            else
-                                t1=sum1(znum_r(i),i)
-                                t2=sum1(znum_r(j),j)
-                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2
-                            endif
-                        endif
-                    enddo
-                endif
-            enddo
-        endif
+                    endif
+                enddo
+            endif
+        enddo
 
         do i=1,nk
             do j=0,bin_max
@@ -705,7 +640,7 @@ contains
     end subroutine move_atom_in_rotated_model
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, scatfact_e, comm, istat, square_pixel)
+    subroutine fem_update(m_in, atom, res, k, vk, scatfact_e, comm, istat)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
@@ -714,11 +649,10 @@ contains
         double precision, dimension(:), intent(out) :: vk
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, intent(in) :: square_pixel
         double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
         type(model) :: moved_atom
-        integer :: i, j, m, n, ntpix
+        integer :: i, j, m, n
         logical, dimension(:,:), allocatable :: update_pix
         type(index_list) :: pix_il
 
@@ -879,7 +813,7 @@ contains
                 ! might do 5 and another core might do 0.
                 if(update_pix(i,m)) then
                     !write(*,*) "Calling intensity in MC on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i, "with core", myid
-                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat, square_pixel)
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat)
                     int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
@@ -1025,10 +959,9 @@ contains
     end subroutine add_pos
 
 
-    subroutine print_sampled_map(m, res, square_pixel)
+    subroutine print_sampled_map(m, res)
         type(model), intent(in) :: m
         real, intent(in) :: res
-        logical, intent(in) :: square_pixel
         integer, dimension(:,:), allocatable :: map
         integer, dimension(:), allocatable :: sampled_atoms
         integer, pointer, dimension(:):: pix_atoms
@@ -1040,11 +973,7 @@ contains
         real :: sqrt1_2_res
         real :: x2, y2
 
-        if(square_pixel) then
-            sqrt1_2_res = SQRT(0.5) * res
-        else
-            sqrt1_2_res = res
-        endif
+        sqrt1_2_res = SQRT(0.5) * res
 
         allocate(sampled_atoms(m%natoms))
         sampled_atoms = 0
@@ -1056,14 +985,9 @@ contains
         write(*,*) "Each row and column below represents", m%lx/ceiling(m%lx), "Angstroms."
         write(*,*) "Dashes represent 0's (for easier viewing) and *'s represent numbers over 9."
         write(*,*) "Numbers indicate the number of atoms at that physical location in the model that are being sampled by a single femsim run (in the 2D projection)."
-        if(.not. square_pixel) write(*,*) "The hard cutoffs along the edges are probably due to the hard cutoff of the hutches. You might get an atom sneak in if it's right on the inner edge of a hutch I'm guessing. I could be wrong here, however."
 
         do i=1, pa%npix
-            if(square_pixel) then
-                call hutch_list_pixel_sq(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
-            else
-                call hutch_list_pixel(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
-            endif
+            call hutch_list_pixel_sq(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
 
             if(allocated(rr_x)) deallocate(rr_x)
             if(allocated(rr_y)) deallocate(rr_y)
@@ -1079,20 +1003,11 @@ contains
                 rr_y(j) = ABS(y2)
                 rr_a(j)=sqrt(x2*x2 + y2*y2)
 
-                if(square_pixel) then
-                    if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le.  sqrt1_2_res))then
-                        sampled_atoms(pix_atoms(j)) = sampled_atoms(pix_atoms(j)) + 1
-                        x = floor( ( m%xx%ind(pix_atoms(j)) + (m%lx/2.0) ) / ( m%lx / ceiling(m%lx) ) ) + 1
-                        y = floor( ( m%yy%ind(pix_atoms(j)) + (m%ly/2.0) ) / ( m%ly / ceiling(m%ly) ) ) + 1
-                        map(x,y) = map(x,y) + 1
-                    endif
-                else
-                    if(rr_a(j) .le. res) then
-                        sampled_atoms(pix_atoms(j)) = sampled_atoms(pix_atoms(j)) + 1
-                        x = floor( ( m%xx%ind(pix_atoms(j)) + (m%lx/2.0) ) / ( m%lx / ceiling(m%lx) ) ) + 1
-                        y = floor( ( m%yy%ind(pix_atoms(j)) + (m%ly/2.0) ) / ( m%ly / ceiling(m%ly) ) ) + 1
-                        map(x,y) = map(x,y) + 1
-                    endif 
+                if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le.  sqrt1_2_res))then
+                    sampled_atoms(pix_atoms(j)) = sampled_atoms(pix_atoms(j)) + 1
+                    x = floor( ( m%xx%ind(pix_atoms(j)) + (m%lx/2.0) ) / ( m%lx / ceiling(m%lx) ) ) + 1
+                    y = floor( ( m%yy%ind(pix_atoms(j)) + (m%ly/2.0) ) / ( m%ly / ceiling(m%ly) ) ) + 1
+                    map(x,y) = map(x,y) + 1
                 endif
             enddo
         enddo

@@ -144,7 +144,7 @@ contains
         character (len=*),intent(in) :: model_filename
         type(model), intent(out) :: m
         integer, intent(out) :: istat      !0 for successful open, others for failure.
-        integer :: i, j, atom_count=0, atom_temp
+        integer :: i, j, atom_temp
         integer, dimension(103) :: elements=0
         real :: comp_temp
         character(3) :: sym
@@ -299,7 +299,6 @@ contains
     ! More should be added as we think of it.
         type(model), intent(in) :: m 
         integer, intent(out) :: istat
-        integer :: i, j
         real xlen, ylen, zlen 
         istat = 0
 
@@ -1152,7 +1151,7 @@ contains
     ! array by one, so it should only be used in conjunction with hutch_add_atom.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom
-        integer :: hx, hy, hz, i, j
+        integer :: hx, hy, hz, i
         type(hutch_array), pointer :: ha
         logical :: found = .false. ! safety feature
         ha => m%ha

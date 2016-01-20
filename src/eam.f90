@@ -14,27 +14,18 @@ contains
 
     ! Reads tabulated eam potential data
     ! Only called once in hrmc to initialize data.
-    subroutine read_eam(m,eamfile)
+    subroutine read_eam(m, eamfile)
         implicit none
         type(model), intent(in) :: m
         character (len=80) :: eamfile
-        integer :: i, j, k, w, q, ii, jj
+        integer :: i, j, k
         integer, dimension(:), allocatable :: znum
         integer :: istat
-        real :: rr, rho1
         real, dimension(:), allocatable :: mass, latt_const
-        real, dimension(:,:,:), allocatable  :: f_temp
-        real, dimension(:,:,:), allocatable  :: rho_temp
-        real, dimension(:,:,:,:), allocatable :: phi_temp
-        real, dimension(:,:), allocatable  :: f_temp2
-        real, dimension(:,:), allocatable  :: rho_temp2
-        real, dimension(:,:,:), allocatable :: phi_temp2
-        real :: trash
         integer, dimension(:), allocatable :: reorder
         integer, dimension(:), allocatable :: atomic_numbers
         character (len=2), dimension(:), allocatable :: atom_syms
         character (len=2), dimension(103) :: all_atom_syms
-        integer :: line
 
         all_atom_syms = (/'H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr'/)
 
@@ -173,11 +164,10 @@ contains
 
     ! Calculates initial energy of model using eam potential
     ! Called in hrmc loop.
-    subroutine eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+    subroutine eam_mc(m, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
         implicit none
         type(model), intent(in) :: m
-        integer :: i, j, k
-        integer, intent(in) :: w
+        integer :: i, j
         integer,  dimension(:), pointer :: atoms1, atoms2, atoms3, atoms4
         integer:: nlist1, nlist2, nlist3, nlist4, rbin, rhobin
         real :: xij, yij, zij, r, r2

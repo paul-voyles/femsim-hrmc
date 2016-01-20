@@ -36,7 +36,7 @@ program hrmc
     integer :: seed
     real :: randnum
     double precision :: te1, te2
-    logical :: square_pixel, accepted, femsim
+    logical :: accepted, femsim
     integer :: ipvd
     integer, dimension(100) :: acceptance_array
     real :: avg_acceptance = 1.0
@@ -121,15 +121,14 @@ program hrmc
     nk = size(k)
     boltzmann = 8.6171e-05
     beta=1./((boltzmann)*temperature)
-    square_pixel = .TRUE. ! HRMC uses square pixels, not round.
 
-    call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
+    call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat)
     allocate(vk(size(vk_exp)))
     vk = 0.0
 
     ! Print warning message if we are using too many cores.
     if(myid.eq.0) then
-        call print_sampled_map(m, res, square_pixel)
+        call print_sampled_map(m, res)
         if(pa%npix /= 1) then
             if(numprocs > 3*nrot) write(0,*) "WARNING: You are using too many cores!"
         else
@@ -140,7 +139,7 @@ program hrmc
     !------------------- Call femsim. -----------------!
 
     ! Fem updates vk based on the intensity calculations.
-    call fem(m, res, k, vk, scatfact_e, mpi_comm_world, istat, square_pixel)
+    call fem(m, res, k, vk, scatfact_e, mpi_comm_world, istat)
 
     if(myid.eq.0)then
         ! Write initial vk 
@@ -210,7 +209,7 @@ program hrmc
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m, w, xx_new, yy_new, zz_new)
     
-            call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            call eam_mc(m, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
             te2 = te2/m%natoms
 
             ! Calculate a randnum for accept/reject
@@ -232,7 +231,7 @@ program hrmc
             endif
 
             if(accepted) then
-                call fem_update(m, w, res, k, vk, scatfact_e, mpi_comm_world, istat, square_pixel)
+                call fem_update(m, w, res, k, vk, scatfact_e, mpi_comm_world, istat)
 
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
                 chi2_new = chi2_no_energy + te2
