@@ -56,7 +56,7 @@ contains
 
         allocate(j0(0:const4),a1(0:const4), stat=istat)
         if (istat /= 0) then
-            write (*,*) 'Failed to allocate memory for Bessel and Airy functions.'
+            write (0,*) 'Failed to allocate memory for Bessel and Airy functions.'
             return
         endif
 
@@ -245,7 +245,7 @@ contains
 
         allocate(rot_temp(ntheta*nphi*npsi,3), stat=istat)
         if (istat /= 0) then
-           write (*,*) 'Cannot allocate temporary rotations array.'
+           write (0,*) 'Cannot allocate temporary rotations array.'
            return
         endif
 
@@ -291,7 +291,7 @@ contains
 
         allocate(rot(num_rot, 3), stat=istat)
         if (istat /= 0) then
-           write (*,*) 'Cannot allocate rotations array.'
+           write (0,*) 'Cannot allocate rotations array.'
            return
         endif
 
@@ -425,13 +425,17 @@ contains
         endif
         do i=myid+1, nrot, numprocs
             do j=1, pa%npix
-                !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i, "with core", myid
+#ifdef DEBUG
+                write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i, "with core", myid
+#endif
                 call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat)
                 int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
             enddo
-            !write(*,*) "Finished intensity calls on model", i
+#ifdef DEBUG
+            write(*,*) "Finished intensity calls on model", i
+#endif
         enddo
 
         call mpi_barrier(comm, mpierr)
@@ -566,10 +570,12 @@ contains
         ! The atom simply moved. It is still in the rotated model the
         ! same number of times as before.
             do j=1,rot_atom%natoms
+#ifdef DEBUG
                 ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
-                !write(*,*) "Atom", mroti%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions in model", mroti%id
-                !write(*,*) "Atom", mroti%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions. It's moving from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
-                !write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+                write(*,*) "Atom", mroti%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions in model", mroti%id
+                write(*,*) "Atom", mroti%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions. It's moving from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+                write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+#endif
                 call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
                 rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
             enddo
@@ -580,15 +586,23 @@ contains
             ! the number of atoms was changed.
             old_index(i)%nat = -1
             
-            !write(*,*) "Atom", atom, "increased the number of times it occurs in model", mroti%id
-            !write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+#ifdef DEBUG
+            write(*,*) "Atom", atom, "increased the number of times it occurs in model", mroti%id
+            if(allocated(mroti%rot_i(atom)%ind)) then
+                write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+            else
+                write(*,*) "Its current (old) rot_i=0"
+            endif
+#endif
 
             ! The atom positions in the rotated model (not atom) should
             ! be updated *up to the number of times it appeared in the
             ! model before*. This saves deleting rot_i(atom) and
             ! re-implementing it, as well as all the atoms it points to.
             do j=1,mroti%rot_i(atom)%nat
-            !write(*,*) "Moving", mroti%rot_i(atom)%ind(j), "from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+#ifdef DEBUG
+            write(*,*) "Moving", mroti%rot_i(atom)%ind(j), "from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+#endif
                 call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
                 rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
             enddo
@@ -597,7 +611,9 @@ contains
             ! haven't gotten to yet.
             do j=mroti%rot_i(atom)%nat+1, rot_atom%natoms
                 call add_atom(mroti, atom, rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j), rot_atom%znum%ind(j), rot_atom%znum_r%ind(j) )
-                !write(*,*) "Added to", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j))
+#ifdef DEBUG
+                write(*,*) "Added to", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j))
+#endif
             enddo
 
         else if( mroti%rot_i(atom)%nat .gt. rot_atom%natoms ) then
@@ -606,8 +622,10 @@ contains
             ! the number of atoms was changed.
             old_index(i)%nat = -1
         
-            !write(*,*) "Atom", atom, "decreased the number of times it occurs in model", mroti%id
-            !write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+#ifdef DEBUG
+            write(*,*) "Atom", atom, "decreased the number of times it occurs in model", mroti%id
+            write(*,*) "Its current (old) rot_i=", mroti%rot_i(atom)%ind
+#endif
 
             ! First I want to sort the indices in mroti%rot_i(atom)
             ! so that when we delete an atom from this array we will
@@ -621,7 +639,9 @@ contains
             ! saves deleting rot_i(atom) and re-implementing it, as well
             ! as all the atoms it points to.
             do j=1,rot_atom%natoms
-            !write(*,*) "Moving", mroti%rot_i(atom)%ind(j), "from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+#ifdef DEBUG
+            write(*,*) "Moving", mroti%rot_i(atom)%ind(j), "from", mroti%xx%ind(mroti%rot_i(atom)%ind(j)),  mroti%yy%ind(mroti%rot_i(atom)%ind(j)), mroti%zz%ind(mroti%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+#endif
                 call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
                 rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
             enddo
@@ -652,7 +672,7 @@ contains
         double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
         type(model) :: moved_atom
-        integer :: i, j, m, n
+        integer :: i, j, m, n, ntpix
         logical, dimension(:,:), allocatable :: update_pix
         type(index_list) :: pix_il
 
@@ -692,9 +712,11 @@ contains
         psum_int = 0.0; psum_int_sq = 0.0
 
         ! ------- Rotate models and call intensity on necessary pixels. ------- !
-        !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
+#ifdef DEBUG
+        write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         
-        !write(*,*) "We have", numprocs, "processor(s)."
+        write(*,*) "We have", numprocs, "processor(s)."
+#endif
         rotations: do i=myid+1, nrot, numprocs
 
             ! Store the current (soon to be old) intensities for fem_reject_move
@@ -734,7 +756,9 @@ contains
             ! did not reenter so there is no structural change - we can skip to
             ! the end of the rotations do loop.
             if( .not. ((rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)) ) then
-            !write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
+#ifdef DEBUG
+            write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
+#endif
 
                 ! Store the original index(es) and position(s) in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
@@ -766,43 +790,46 @@ contains
                 enddo
 
                 ! ------- Update atoms in the rotated model. ------- !
-                !write(*,*) "Moving atom", atom, mrot(i)%rot_i(atom)%nat
-                !do n=1, mrot(i)%rot_i(atom)%nat
-                !    write(*,*) "  from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
-                !enddo
-                !do n=1, rot_atom%natoms
-                !    write(*,*) "  to  ", rot_atom%xx%ind(n), rot_atom%yy%ind(n), rot_atom%zz%ind(n)
-                !enddo
+#ifdef DEBUG
+                write(*,*) "Moving atom", atom, mrot(i)%rot_i(atom)%nat
+                do n=1, mrot(i)%rot_i(atom)%nat
+                    write(*,*) "  from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
+                enddo
+                do n=1, rot_atom%natoms
+                    write(*,*) "  to  ", rot_atom%xx%ind(n), rot_atom%yy%ind(n), rot_atom%zz%ind(n)
+                enddo
+#endif
                 call move_atom_in_rotated_model(atom,mrot(i),i)
-                !write(*,*) "Moved atom", atom, mrot(i)%rot_i(atom)%nat
-                !do n=1, mrot(i)%rot_i(atom)%nat
-                !    write(*,*) "  to  ", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
-                !enddo
+#ifdef DEBUG
+                write(*,*) "Moved atom", atom, mrot(i)%rot_i(atom)%nat
+                do n=1, mrot(i)%rot_i(atom)%nat
+                    write(*,*) "  to  ", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
+                enddo
 
                 ! Error check!
                 do n=1, rot_atom%natoms
                     if( rot_atom%xx%ind(n) .ne.  mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)) ) write(*,*) "ERROR! x coord moved wrong!", atom, rot_atom%xx%ind(n), mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n))
                     if( rot_atom%yy%ind(n) .ne.  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)) ) write(*,*) "ERROR! y coord moved wrong!", atom, rot_atom%yy%ind(n), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n))
                     if( rot_atom%zz%ind(n) .ne.  mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n)) ) write(*,*) "ERROR! z coord moved wrong!", atom, rot_atom%zz%ind(n), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
-                    !write(*,*) rot_atom%xx%ind(n), rot_atom%yy%ind(n), rot_atom%zz%ind(n)
-                    !write(*,*) mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(n)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(n))
                 enddo
+#endif
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
 
         enddo rotations
 
-        ! For debugging only.
-        !ntpix = 0
-        !do i=1, nrot
-        !    do m=1, pa%npix
-        !        if(update_pix(i,m) == .TRUE.) then
-        !            ntpix = ntpix + 1
-        !        endif
-        !    enddo
-        !enddo
-        !write(*,*) "Calling Intensity on ", ntpix, " pixels."
-        !write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
+#ifdef DEBUG
+        ntpix = 0
+        do i=1, nrot
+            do m=1, pa%npix
+                if(update_pix(i,m) == .TRUE.) then
+                    ntpix = ntpix + 1
+                endif
+            enddo
+        enddo
+        write(*,*) "Calling Intensity on ", ntpix, " pixels."
+        write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
+#endif
 
         ! In this loop, 'i' is the model that has intensity called on it.
         do i=myid+1, nrot, numprocs
@@ -812,13 +839,17 @@ contains
                 ! may do a different number of pixel calculations, so one core
                 ! might do 5 and another core might do 0.
                 if(update_pix(i,m)) then
-                    !write(*,*) "Calling intensity in MC on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i, "with core", myid
+#ifdef DEBUG
+                    write(*,*) "Calling intensity in MC on pixel (", pa%pix(m,1), ",",pa%pix(m,2), ") in rotated model ", i, "with core", myid
+#endif
                     call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat)
                     int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
         enddo
-        !write(*,*) "I am core", myid, "and I am past the int calls."
+#ifdef DEBUG
+        write(*,*) "I am core", myid, "and I am past the int calls."
+#endif
         
         ! Set psum_int and psum_int_sq. This MUST be done inside an MPI loop
         ! with the exact same structure as the MPI loop that called intensity.
@@ -828,7 +859,9 @@ contains
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)
             enddo
         enddo
-        !write(*,*) "I am core", myid, "and I am past the psum_int setters."
+#ifdef DEBUG
+        write(*,*) "I am core", myid, "and I am past the psum_int setters."
+#endif
 
         ! psum_int_sq is set is set in the above loop. int_sq is set in the loop
         ! above that. int_i is set in subroutine intensity.
@@ -841,7 +874,9 @@ contains
         call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
-        !write(*,*) "I am core", myid, "and I am past mpi_reduce."
+#ifdef DEBUG
+        write(*,*) "I am core", myid, "and I am past mpi_reduce."
+#endif
 
         ! Recalculate the variance
         if(myid.eq.0)then
@@ -852,7 +887,9 @@ contains
 
         deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-        !write(*,*) "I am core", myid, "and I am done with fem_update."
+#ifdef DEBUG
+        write(*,*) "I am core", myid, "and I am done with fem_update."
+#endif
     end subroutine fem_update
 
 
@@ -907,9 +944,13 @@ contains
         moved_atom%composition(1) = 1.0
         moved_atom%rotated = .FALSE.
 
-        !write(*,*) "Un-moving atom in rotated models"
+#ifdef DEBUG
+        write(*,*) "Un-moving atom in rotated models"
+#endif
         do i=myid+1, nrot, numprocs
-            !write(*,*) "Model", i, "has old_index%nat=", old_index(i)%nat
+#ifdef DEBUG
+            write(*,*) "Model", i, "has old_index%nat=", old_index(i)%nat
+#endif
             if(.not. old_index(i)%nat == 0) then
 
                 call rotate_atom(rot(i,1), rot(i, 2), rot(i, 3), moved_atom, rot_atom, istat)
@@ -1016,15 +1057,12 @@ contains
             do j=1, ceiling(m%ly)
                 str = ''
                 if(map(i,j) .eq. 0) then
-                    !write(str, "(A2)") " -"
                     write(str, "(A1)") "-"
                     buffer = trim(buffer)//str
                 else if(map(i,j) .lt. 10 ) then
-                    !write(str, "(A1,I1)") " ", map(i,j)
                     write(str, "(I1)") map(i,j)
                     buffer = trim(buffer)//str
                 else
-                    !write(str, "(A2)") " *"
                     write(str, "(A1)") "*"
                     buffer = trim(buffer)//str
                 endif

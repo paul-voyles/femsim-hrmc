@@ -1,5 +1,6 @@
 ! Hybrid Reverse Monte Carlo structural simulation
 
+
 program hrmc
 
     use hrmc_global
@@ -15,8 +16,8 @@ program hrmc
     character (len=256) :: model_filename
     character (len=256) :: param_filename
     character (len=256) :: eam_filename
-    character (len=256) :: jobID, c, step_str
-    character (len=256) :: vki_fn, vkf_fn, output_model_fn, final_model_fn, chi_squared_file, acceptance_rate_fn, femfile
+    character (len=256) :: jobID, c
+    character (len=256) :: vki_fn, vkf_fn, final_model_fn, chi_squared_file, acceptance_rate_fn, femfile
     character (len=256) :: paramfile_restart
     real :: temperature
     real :: max_move
@@ -25,23 +26,29 @@ program hrmc
     double precision, pointer, dimension(:) :: vk, vk_exp, vk_exp_err
     real, allocatable, dimension(:,:) :: cutoff_r 
     real, pointer, dimension(:,:) :: scatfact_e
-    real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
     real :: scale_fac, scale_fac_initial, beta, boltzmann
-    double precision :: chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
-    integer :: i, j, step_start, step_end
-    integer :: w
+    integer :: i
     integer :: nk
     integer :: ntheta, nphi, npsi
+    integer :: step_start, step_end
     integer :: istat, length
     integer :: seed
-    real :: randnum
-    double precision :: te1, te2
-    logical :: accepted, femsim
+    logical :: femsim
     integer :: ipvd
-    integer, dimension(100) :: acceptance_array
-    real :: avg_acceptance = 1.0
     integer :: temp_move_decrement
     character(3), dimension(118) :: syms
+#ifndef FEMSIM
+    character (len=256) :: output_model_fn
+    character (len=256) :: step_str
+    real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
+    double precision :: chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
+    integer :: w, j
+    real :: randnum
+    double precision :: te1, te2
+    logical :: accepted
+    integer, dimension(100) :: acceptance_array
+    real :: avg_acceptance = 1.0
+#endif
 
     syms = (/ "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",  &
         "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V",    &
@@ -227,7 +234,7 @@ program hrmc
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m, w, xx_cur, yy_cur, zz_cur)
                 e2 = e1
-                if(myid.eq.0) write(*,*) "MC move rejected solely due to energy."
+                if(myid.eq.0) write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta
             endif
 
             if(accepted) then

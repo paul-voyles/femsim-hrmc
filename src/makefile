@@ -7,7 +7,6 @@ OBJ = $(addsuffix .o, $(basename $(SRC)))
 LIBS=
 
 FC = mpif90
-CC = icc
 
 .DEFAULT_GOAL := nothing
 

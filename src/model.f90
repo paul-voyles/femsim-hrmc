@@ -1410,7 +1410,6 @@ contains
     subroutine remove_index_real(il, ind)
         type(real_index_list), intent(inout) :: il
         integer, intent(in) :: ind
-        integer, dimension(:), allocatable :: scratch
             il%ind( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
             il%nat = il%nat - 1
     end subroutine remove_index_real
