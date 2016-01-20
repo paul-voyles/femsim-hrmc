@@ -373,14 +373,13 @@ contains
     end subroutine init_pix
 
 
-    subroutine fem(m, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, rot_begin, rot_end)
+    subroutine fem(m, res, k, vk, scatfact_e, comm, istat, square_pixel, rot_begin, rot_end)
         use mpi
         implicit none
         type(model), intent(in) :: m
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k
         double precision, dimension(:), INTENT(OUT) :: vk
-        double precision, dimension(:), intent(in) :: v_background
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, optional, intent(in) :: square_pixel
@@ -460,7 +459,6 @@ contains
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                Vk(i) = Vk(i) - v_background(i)  ! background subtraction
             end do
         endif
 
@@ -707,13 +705,12 @@ contains
     end subroutine move_atom_in_rotated_model
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel)
+    subroutine fem_update(m_in, atom, res, k, vk, scatfact_e, comm, istat, square_pixel)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k
-        double precision, dimension(:), intent(in) :: v_background
         double precision, dimension(:), intent(out) :: vk
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
@@ -916,7 +913,6 @@ contains
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                Vk(i) = Vk(i) - v_background(i)   ! background subtraction
             end do
         endif
 

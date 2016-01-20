@@ -1,0 +1,15 @@
+# An example parameter file for HRMC
+models/Zr50Cu35Al15_start.xyz                # Model file
+data/fem_exp_Zr50Cu35Al15_t3.txt             # Experimental data file
+0.0305                                       # Q (inverse angstrom) = 0.61 / R
+1 40 20                                      # number of rotations(nphi, npsi, ntheta), use 1 40 20
+28.6378                                      # thickness scaling factor = 3 texp/tsim
+potentials/reformatted/ZrCuAl2011.eam.alloy  # Potential file with EAM/alloy or EAM/FS format
+0 4000000                                    # starting step, ending step
+300.0 1.5 50000                              # starting temp (assuming s=0), starting max_move, how often we decrement both
+10475                                        # seed
+0.0256                                       # weighting factor between E and chi2
+3                                            # number of atomic species
+2.272 2.272 2.272
+2.272 2.272 2.272                            # hard sphere cutoff distances
+2.272 2.272 2.272

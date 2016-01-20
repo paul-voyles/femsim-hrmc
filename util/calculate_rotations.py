@@ -1,3 +1,4 @@
+import sys
 import math
 
 def calculate_rotations(nphi, npsi, ntheta, verbose=True):
@@ -28,7 +29,7 @@ def calculate_rotations(nphi, npsi, ntheta, verbose=True):
 
     if verbose:
         for phi, psi, theta in rot[0:num_rot]:
-            print(phi, psi, theta, sep='  ')
+            print('{0}  {1}  {2}'.format(phi, psi, theta))
 
     return rot[0:num_rot]
 
@@ -37,6 +38,10 @@ def main():
     nphi = 1  # 1
     npsi = 20  # 20 -- Currently, you need to double this number for input in the paramfile
     ntheta = 20 # 20
+    if len(sys.argv) == 4:
+        nphi = int(sys.argv[1])
+        npsi = int(sys.argv[2]) / 2
+        ntheta = int(sys.argv[3])
 
     rots = calculate_rotations(nphi, npsi, ntheta, verbose=True)
     print("Number of rotations:", len(rots))

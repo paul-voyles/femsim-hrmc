@@ -20,7 +20,7 @@ def submit_job(paramfile, prev_jobid, s, es):
     """ Pass None to prev_jobid if using param_file.in as paramfile """
 
     # Call sed to change starting step number to s
-    args = "sed -i '5s/.*/{0} {1}\t\t# starting step, ending step/' {2}".format(s, es, paramfile)
+    args = "sed -i '8s/.*/{0} {1}\t\t# starting step, ending step/' {2}".format(s, es, paramfile)
     pcomm = run_subproc(args)
 
     # Do the submitting
@@ -47,7 +47,7 @@ def main():
     ts = 4000000 # total number of steps in the simulation
     js = 1500000 # number of steps per job
     ss = 0 # starting step, this number gets changed in the loop ~ incremented by js on each submit
-    starting_param_filename = 'param_file.in' # It is expected that the starting parameters in here are correct
+    starting_param_filename = 'parameters/hrmc.in' # It is expected that the starting parameters in here are correct
 
     for s in range(ss, ts, js):
         if(s > ss):

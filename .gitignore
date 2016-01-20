@@ -1,0 +1,5 @@
+*.o
+*.mod
+femsim
+hrmc
+src/ran2__genmod.f90

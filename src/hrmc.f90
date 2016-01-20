@@ -22,24 +22,22 @@ program hrmc
     real :: max_move
     real :: Q, res, alpha
     real, pointer, dimension(:) :: k
-    double precision, pointer, dimension(:) :: vk, vk_exp, vk_exp_err, v_background
+    double precision, pointer, dimension(:) :: vk, vk_exp, vk_exp_err
     real, allocatable, dimension(:,:) :: cutoff_r 
     real, pointer, dimension(:,:) :: scatfact_e
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
     real :: scale_fac, scale_fac_initial, beta, boltzmann
-    double precision :: chi2_old, chi2_new, del_chi, chi2_gr, chi2_vk, chi2_no_energy, chi2_initial
-    real :: R
+    double precision :: chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
     integer :: i, j, step_start, step_end
     integer :: w
     integer :: nk
     integer :: ntheta, nphi, npsi
-    integer :: istat, status2, length
-    integer :: iseed2
+    integer :: istat, length
+    integer :: seed
     real :: randnum
     double precision :: te1, te2
-    logical :: square_pixel, accepted
-    integer :: ipvd, nthr
-    real :: x! This is the parameter we will use to fit vsim to vas.
+    logical :: square_pixel, accepted, femsim
+    integer :: ipvd
     integer, dimension(100) :: acceptance_array
     real :: avg_acceptance = 1.0
     integer :: temp_move_decrement
@@ -57,6 +55,11 @@ program hrmc
         "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo" /)
 
     !------------------- Program setup. -----------------!
+#ifdef  FEMSIM
+    femsim = .true.
+#else
+    femsim = .false.
+#endif
 
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
@@ -99,7 +102,7 @@ program hrmc
     if(myid.eq.0) write(*,*) "Paramfile: ", trim(param_filename)
     
     ! Read input parameters
-    call read_inputs(param_filename,model_filename, femfile, eam_filename, step_start, step_end, temp_move_decrement, temperature, max_move, cutoff_r, iseed2, alpha, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, scale_fac_initial, Q, status2)
+    call read_inputs(param_filename, femsim, model_filename, femfile, Q, ntheta, nphi, npsi, scale_fac_initial, eam_filename, step_start, step_end, temp_move_decrement, temperature, max_move, cutoff_r, seed, alpha, vk_exp, k, vk_exp_err)
     temperature = temperature*(sqrt(0.7)**(step_start/temp_move_decrement))
     max_move = max_move*(sqrt(0.94)**(step_start/temp_move_decrement))
 
@@ -136,8 +139,8 @@ program hrmc
 
     !------------------- Call femsim. -----------------!
 
-    ! Fem updates vk based on the intensity calculations and v_background.
-    call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+    ! Fem updates vk based on the intensity calculations.
+    call fem(m, res, k, vk, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     if(myid.eq.0)then
         ! Write initial vk 
@@ -211,7 +214,7 @@ program hrmc
             te2 = te2/m%natoms
 
             ! Calculate a randnum for accept/reject
-            randnum = ran2(iseed2)
+            randnum = ran2(seed)
 
             ! Decide whether to reject just based on the energy.
             ! The fit to V(k) cannot be negative, so there is a lower
@@ -229,7 +232,7 @@ program hrmc
             endif
 
             if(accepted) then
-                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+                call fem_update(m, w, res, k, vk, scatfact_e, mpi_comm_world, istat, square_pixel)
 
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
                 chi2_new = chi2_no_energy + te2
@@ -329,18 +332,18 @@ program hrmc
                         write(53,*) '# HRMC parameter file, generated to restart a sim ', trim(jobid(2:))
                         write(53,*) trim(output_model_fn)
                         write(53,*) trim(femfile)
+                        write(53,*) Q
+                        write(53,*) nphi, npsi, ntheta
+                        write(53,*) scale_fac_initial
                         write(53,*) trim(eam_filename)
                         write(53,*) step_start+i, step_end
                         write(53,*) temperature, max_move, temp_move_decrement
+                        write(53,*) seed
+                        write(53,*) alpha
                         write(53,*) nelements
                         do j=1,nelements
                             write(53,*) cutoff_r(:,j)
                         enddo
-                        write(53,*) iseed2
-                        write(53,*) alpha
-                        write(53,*) scale_fac_initial
-                        write(53,*) nphi, npsi, ntheta
-                        write(53,*) Q
                     close(53)
                 endif
             endif
@@ -356,18 +359,18 @@ program hrmc
                 write(53,*) '# HRMC parameter file, generated to restart a sim ', trim(jobid(2:))
                 write(53,*) trim(final_model_fn)
                 write(53,*) trim(femfile)
+                write(53,*) Q
+                write(53,*) nphi, npsi, ntheta
+                write(53,*) scale_fac_initial
                 write(53,*) trim(eam_filename)
                 write(53,*) step_start+i-1, step_end+i-1
                 write(53,*) temperature, max_move, temp_move_decrement
+                write(53,*) seed
+                write(53,*) alpha
                 write(53,*) nelements
                 do j=1,nelements
                     write(53,*) cutoff_r(:,j)
                 enddo
-                write(53,*) iseed2
-                write(53,*) alpha
-                write(53,*) scale_fac_initial
-                write(53,*) nphi, npsi, ntheta
-                write(53,*) Q
             close(53)
 
             ! Write final vk
