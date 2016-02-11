@@ -110,8 +110,6 @@ program hrmc
     
     ! Read input parameters
     call read_inputs(param_filename, femsim, model_filename, femfile, Q, ntheta, nphi, npsi, scale_fac_initial, eam_filename, step_start, step_end, temp_move_decrement, temperature, max_move, cutoff_r, seed, alpha, vk_exp, k, vk_exp_err)
-    temperature = temperature*(sqrt(0.7)**(step_start/temp_move_decrement))
-    max_move = max_move*(sqrt(0.94)**(step_start/temp_move_decrement))
 
     ! Read input model
     call read_model(model_filename, m, istat)
@@ -126,8 +124,6 @@ program hrmc
     scale_fac = scale_fac_initial
     res = 0.61/Q
     nk = size(k)
-    boltzmann = 8.6171e-05
-    beta=1./((boltzmann)*temperature)
 
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat)
     allocate(vk(size(vk_exp)))
@@ -159,9 +155,14 @@ program hrmc
         close(52)
     endif
 
+#ifndef FEMSIM
+    temperature = temperature*(sqrt(0.7)**(step_start/temp_move_decrement))
+    max_move = max_move*(sqrt(0.94)**(step_start/temp_move_decrement))
+    boltzmann = 8.6171e-05
+    beta=1./((boltzmann)*temperature)
+
     !------------------- Call potential energy function. -----------------!
 
-#ifndef FEMSIM
     call read_eam(m,eam_filename)
     call eam_initial(m,te1)
     te1 = te1/m%natoms

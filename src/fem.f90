@@ -75,10 +75,7 @@ contains
         const4 = int(bin_max*const3*CEILING(k(SIZE(k))))+1
 
         allocate(j0(0:const4),a1(0:const4), stat=istat)
-        if (istat /= 0) then
-            write (0,*) 'Failed to allocate memory for Bessel and Airy functions.'
-            return
-        endif
+        call check_for_error(istat, 'Failed to allocate memory for Bessel and Airy functions.')
 
         ! Initialize bessel function
         j0=0.0
@@ -264,10 +261,7 @@ contains
         integer :: pp
 
         allocate(rot_temp(ntheta*nphi*npsi,3), stat=istat)
-        if (istat /= 0) then
-           write (0,*) 'Cannot allocate temporary rotations array.'
-           return
-        endif
+        call check_for_error(istat, 'Cannot allocate temporary rotations array.')
 
         ! phi runs from 0 to 2 PI
         ! psi runs from 0 to 2 PI
@@ -310,10 +304,7 @@ contains
         if(myid .eq. 0) write(*,*) "Number of rotations:", num_rot
 
         allocate(rot(num_rot, 3), stat=istat)
-        if (istat /= 0) then
-           write (0,*) 'Cannot allocate rotations array.'
-           return
-        endif
+        call check_for_error(istat, 'Cannot allocate rotations array.')
 
         do i=1, num_rot
             rot(i,1) = rot_temp(i,1)
@@ -353,10 +344,7 @@ contains
         pa%dr = m%lx/pa%npix_1D - pa%phys_diam
 
         allocate(pa%pix(pa%npix, 2), stat=istat)
-        if (istat /= 0) then
-            write (*,*) 'Cannot allocate pixel position array.'
-            return
-        endif
+        call check_for_error(istat, 'Cannot allocate pixel position array.')
 
         k=1
         do i=1, pa%npix_1D

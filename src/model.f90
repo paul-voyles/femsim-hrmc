@@ -411,16 +411,21 @@ contains
             endif
         enddo
 
+        mrot%nelements = min%nelements
+        allocate(mrot%atom_type(mrot%nelements), stat=istat)
+        call check_for_error(istat, 'Problem allocating memory in rotate_model.')
+        mrot%atom_type = min%atom_type
+
         ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
         allocate(mrot%xx%ind(mrot%natoms*2), mrot%yy%ind(mrot%natoms*2), mrot%zz%ind(mrot%natoms*2), &
             mrot%znum%ind(mrot%natoms*2),  mrot%rot_i(mrot%unrot_natoms*2), mrot%znum_r%ind(mrot%natoms*2), stat=istat)
+        call check_for_error(istat, 'Problem allocating memory in rotate_model.')
         mrot%xx%nat = mrot%natoms
         mrot%yy%nat = mrot%natoms
         mrot%zz%nat = mrot%natoms
         mrot%znum%nat = mrot%natoms
         mrot%znum_r%nat = mrot%natoms
-        call check_for_error(istat, 'Problem allocating memory in rotate_model.')
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
