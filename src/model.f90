@@ -358,7 +358,7 @@ contains
         if (istat /= 0) return
 
         allocate(orig_indices(mt%natoms), stat=istat)
-        orig_indices = (/ (mod(i,min%natoms)+1, i=0,mt%natoms-1) /) ! Jason 10-14-2013
+        orig_indices = (/ (mod(i,min%natoms)+1, i=0,mt%natoms-1) /)
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
@@ -414,7 +414,7 @@ contains
         ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
         allocate(mrot%xx%ind(mrot%natoms*2), mrot%yy%ind(mrot%natoms*2), mrot%zz%ind(mrot%natoms*2), &
-            mrot%znum%ind(mrot%natoms*2),  mrot%rot_i(mrot%unrot_natoms*2), mrot%znum_r%ind(mrot%natoms*2), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
+            mrot%znum%ind(mrot%natoms*2),  mrot%rot_i(mrot%unrot_natoms*2), mrot%znum_r%ind(mrot%natoms*2), stat=istat)
         mrot%xx%nat = mrot%natoms
         mrot%yy%nat = mrot%natoms
         mrot%zz%nat = mrot%natoms

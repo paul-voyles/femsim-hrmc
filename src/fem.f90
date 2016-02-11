@@ -998,7 +998,7 @@ contains
         endif
         call check_for_error(istat, 'Error allocating memory in add_pos.')
         if (allocated(scratch)) then
-            deallocate(scratch)  ! added 3/18/09 pmv 
+            deallocate(scratch)
         endif
     end subroutine add_pos
 
