@@ -1,4 +1,4 @@
-! Hybrid Reverse Monte Carlo structural simulation
+! Hybrid Reverse Monte Carlo using FEMSIM
 
 
 program hrmc
@@ -11,7 +11,7 @@ program hrmc
     use eam_mod
     implicit none
     include 'mpif.h'
-    ! HRMC / Femsim objects
+    ! Femsim  variables
     type(model) :: m
     character (len=256) :: model_filename
     character (len=256) :: param_filename
@@ -38,6 +38,7 @@ program hrmc
     integer :: temp_move_decrement
     character(3), dimension(118) :: syms
 #ifndef FEMSIM
+    ! HRMC variables
     character (len=256) :: output_model_fn
     character (len=256) :: step_str
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
@@ -45,7 +46,7 @@ program hrmc
     integer :: w, j
     real :: randnum
     double precision :: te1, te2
-    logical :: accepted
+    logical :: accepted, energy_accepted
     integer, dimension(100) :: acceptance_array
     real :: avg_acceptance = 1.0
 #endif
@@ -62,13 +63,13 @@ program hrmc
         "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo" /)
 
     !------------------- Program setup. -----------------!
-#ifdef  FEMSIM
+#ifdef FEMSIM
     femsim = .true.
 #else
     femsim = .false.
 #endif
 
-    call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
+    call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr)
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
@@ -78,7 +79,6 @@ program hrmc
             jobID = "_"//trim(c)
         else
             error stop "istat for jobid get_command_arg was nonzero"
-            !jobID = '_temp'
         end if
         call get_command_argument(2, c, length, istat)
         if (istat == 0) then
@@ -133,7 +133,9 @@ program hrmc
     allocate(vk(size(vk_exp)))
     vk = 0.0
 
-    ! Print warning message if we are using too many cores.
+    ! Print warning message if the user is using too many cores.
+    ! For example, in a 1 pixel model, the number of cores should
+    ! never be larger than the number of rotations.
     if(myid.eq.0) then
         call print_sampled_map(m, res)
         if(pa%npix /= 1) then
@@ -149,7 +151,7 @@ program hrmc
     call fem(m, res, k, vk, scatfact_e, mpi_comm_world, istat)
 
     if(myid.eq.0)then
-        ! Write initial vk 
+        ! Write initial vk to file
         open(unit=52,file=trim(vki_fn),form='formatted',status='unknown')
             do i=1, nk
                 write(52,*) k(i), vk(i)
@@ -186,34 +188,30 @@ program hrmc
             write(*,*) "   Temperature =      ", temperature
             write(*,*) "   Max Move=          ", max_move
             write(*,*)
-            ! Reset energy/chi_squared file
+            ! Reset energy/chi_squared and acceptance rate files
             open(36,file=trim(chi_squared_file), form='formatted', status='unknown')
                 write(36,*) "step, chi2, energy"
                 write(36,*) i, chi2_no_energy, te1
-            close(36)
-            open(37,file=trim(acceptance_rate_fn), form='formatted', status='unknown', access='append')
-                write(37,*) "step, acceptance rate averaged over last 1000 steps"
-            close(37)
+            open(40,file=trim(acceptance_rate_fn), form='formatted', status='unknown')
+                write(40,*) "step, acceptance rate averaged over last 1000 steps"
         endif
 
 
         ! HRMC loop begins.
         do while (i .le. step_end)
-
             i = i + 1
-            if(myid .eq. 0) write(*,*) "Starting step", i
 
             call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
-            ! check_curoffs returns false if the new atom placement is too close to
+            ! check_cutoffs returns false if the new atom placement is too close to
             ! another atom. Returns true if the move is okay. (hard shere cutoff)
             do while( .not. check_cutoffs(m,cutoff_r,w) )
-                ! Check_cutoffs returned false so reset positions and try again.
+                ! check_cutoffs returned false so reset positions and try again.
                 m%xx%ind(w) = xx_cur
                 m%yy%ind(w) = yy_cur
                 m%zz%ind(w) = zz_cur
                 call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
             end do
-            ! Update hutches, data for chi2, and chi2/del_chi
+            ! Update hutches with the moved atom position
             call hutch_move_atom(m, w, xx_new, yy_new, zz_new)
     
             call eam_mc(m, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
@@ -228,16 +226,16 @@ program hrmc
             ! if the energy is so bad that the no value of chi2_no_energy
             ! can make the change in the objective function good enough
             ! to be accepted.
-            accepted = .true.
+            ! This can save an entire call to fem_update.
+            energy_accepted = .true.
             if(log(1.0-randnum) > -(te2-chi2_old)*beta) then
-                accepted = .false.
+                energy_accepted = .false.
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m, w, xx_cur, yy_cur, zz_cur)
                 e2 = e1
-                if(myid.eq.0) write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta
             endif
 
-            if(accepted) then
+            if(energy_accepted) then
                 call fem_update(m, w, res, k, vk, scatfact_e, mpi_comm_world, istat)
 
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
@@ -245,59 +243,71 @@ program hrmc
                 del_chi = chi2_new - chi2_old
                 call mpi_bcast(del_chi, 1, mpi_double, 0, mpi_comm_world, mpierr)
 
-                if(myid .eq. 0) then
-                    write(*,*) "Energy = ", te2
-                    write(*,*) "Del-V(k) = ", chi2_no_energy
-                    write(*,*) "Del-chi = ", del_chi
-                    write(*,*) "chi2_old = ", chi2_old
-                    write(*,*) "chi2_new = ", chi2_new
-                endif
-
                 ! Test if the move should be accepted or rejected based on del_chi
                 if(del_chi < 0.0) then
-                    ! Accept the move
+                    ! Accept move
                     call fem_accept_move()
-                    e1 = e2 ! eam
+                    e1 = e2
                     chi2_old = chi2_new
                     accepted = .true.
-                    if(myid.eq.0) write(*,*) "MC move accepted outright."
                 else
                     ! Based on the random number above, even if del_chi is negative, decide
-                    ! whether to accept or not (probabalistically).
+                    ! whether to accept or not.
                     if(log(1.0-randnum) < -del_chi*beta) then
                         ! Accept move
                         call fem_accept_move()
                         e1 = e2 ! eam
                         chi2_old = chi2_new
                         accepted = .true.
-                        if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                     else
                         ! Reject move
                         call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-                        call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
+                        call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)
                         call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur)
-                        e2 = e1 ! eam
+                        e2 = e1
                         accepted = .false.
-                        if(myid.eq.0) write(*,*) "MC move rejected."
                     endif
                 endif
             endif
 
-            ! Everything after this line is data output to save information to disk
+            ! With the exception of decrement the temperature and max_mvoe, 
+            ! everything after this line is data output to save information to disk
 
             if(myid .eq. 0) then
+                write(*,*) "Finished step", i
+
                 if(accepted) then
+                    ! Write chi2 and energy info
+                    write(36,*) i, chi2_no_energy, te2
+
+                    ! Update acceptance rate
                     acceptance_array(mod(i,100)+1) = 1
+
+                    if(energy_accepted) then
+                        write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta
+                    else if(del_chi < 0.0) then
+                        write(*,*) "MC move accepted outright."
+                    else
+                        write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                    endif
+
+                    write(*,*) "Energy = ", te2
+                    write(*,*) "Del-V(k) = ", chi2_no_energy
+                    write(*,*) "Del-chi = ", del_chi
+                    write(*,*) "chi2_old = ", chi2_old
+                    write(*,*) "chi2_new = ", chi2_new
                 else
+                    write(*,*) "MC move rejected."
                     acceptance_array(mod(i,100)+1) = 0
                 endif
-                avg_acceptance = sum(acceptance_array)/100.0
-                ! Writing to 0 is stderr
-                !if(i .ge. 100 .and. avg_acceptance .le. 0.05 .and. mod(i,100) .eq. 0) write(0,*) "WARNING!  Acceptance rate is low:", avg_acceptance
-            endif
 
-            ! Periodically save data.
-            if(myid .eq. 0) then
+                ! Write to acceptance rate
+                if(mod(i,100)==0 .and. i .ge. 100)then
+                    avg_acceptance = sum(acceptance_array)/100.0
+                    write(40,*) i, avg_acceptance
+                endif
+
+                ! Periodically save data.
                 if(mod(i,HRMC_STEPS) .eq. 0 .and. i .gt. step_start) then
                     write(output_model_fn, "(A12)") "model_update"
                     write(step_str,*) i
@@ -310,30 +320,19 @@ program hrmc
                         enddo
                     close(33)
                 endif
-                if(accepted) then
-                    ! Write chi2 and energy info
-                    open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
-                        write(36,*) i, chi2_no_energy, te2
-                    close(36)
-                endif
-                if(mod(i,100)==0 .and. i .ge. 100)then
-                    ! Write to acceptance rate
-                    open(40,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
-                        write(40,*) i, avg_acceptance
-                    close(40)
-                endif
             endif
 
             ! Every 'temp_move_decrement' steps lower the temp, max_move, and reset beta.
             if(mod(i,temp_move_decrement) .eq. 0 .and. i .ne. step_start)then
                 temperature = temperature * sqrt(0.7)
-                if(myid .eq. 0) write(*,*) "Lowering temp to", temperature, "at step", i
                 max_move = max_move * sqrt(0.94)
-                if(myid .eq. 0) write(*,*) "Lowering max_move to", max_move, "at step", i
                 beta = 1./((boltzmann)*temperature)
 
                 ! Write to param_resume.in file
                 if(myid .eq. 0) then
+                    write(*,*) "Lowering temp to", temperature, "at step", i
+                    write(*,*) "Lowering max_move to", max_move, "at step", i
+
                     open(unit=53,file=trim(paramfile_restart),form='formatted',status='unknown')
                         write(53,*) '# HRMC parameter file, generated to restart a sim ', trim(jobid(2:))
                         write(53,*) trim(output_model_fn)
@@ -354,11 +353,15 @@ program hrmc
                 endif
             endif
 
-        enddo !HRMC do loop
+        enddo ! HRMC loop
 
-        ! The hrmc loop finished. Write final data.
+        ! The HRMC loop finished. Write final data.
         if(myid .eq. 0) then
-            write(*,*) "Monte Carlo Finished!"
+            write(*,*) "HRMC Finished!"
+
+            ! Close the energy/chi_squared and acceptance rate files
+            close(36)
+            close(40)
 
             ! Write to param_resume.in file
             open(unit=53,file=trim(paramfile_restart),form='formatted',status='unknown')

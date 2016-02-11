@@ -50,8 +50,8 @@ nothing: ;
 
 ${FEMSIM}: ${OBJ} hrmc.o
 	${FC} ${OBJ} ${FCFLAGS} -o ${FEMSIM}
-	rm hrmc.o  # Need to remove hrmc.o so that it can be recompiled for hrmc correctly
+	rm hrmc.o  # Needed to remove hrmc.o so that it can be recompiled for hrmc correctly
 
 ${HRMC}: ${OBJ} hrmc.o
 	${FC} ${OBJ} ${FCFLAGS} -o ${HRMC}
-	rm hrmc.o  # Need to remove hrmc.o so that it can be recompiled for femsim correctly
+	rm hrmc.o  # Needed to remove hrmc.o so that it can be recompiled for femsim correctly

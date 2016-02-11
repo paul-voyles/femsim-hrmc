@@ -18,7 +18,11 @@ module fem_mod
         real, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
         real :: phys_diam
-        real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge. This is NOT the distance between the pixel centers. This is the distance between the edges of two different pixels. dr + phys_diam is the distance between the pixel centers!
+        ! dr is the distance between pixels. Note, therefore, that there is half this
+        ! distance between the pixels and the world edge. This is NOT the distance
+        ! between the pixel centers. This is the distance between the edges of two
+        ! different pixels. dr + phys_diam is the distance between the pixel centers!
+        real :: dr
     end type pix_array
     real, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
     double precision, save, dimension(:,:,:), allocatable :: int_i, int_sq ! nk x npix x nrot.  int_sq == int_i**2
@@ -33,6 +37,22 @@ module fem_mod
 
 contains
 
+    subroutine sort(il)
+        ! Insertion sort on index list of ints
+        type(index_list), intent(inout) :: il
+        integer :: i, j, temp
+        do i=1, il%nat
+            do j=1, i
+                if( il%ind(i) < il%ind(j) ) then
+                    temp = il%ind(i)
+                    il%ind(i) = il%ind(j)
+                    il%ind(j) = temp
+                end if
+            end do
+        end do
+    end subroutine sort
+
+
     subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat)
         type(model), intent(in) :: m 
         real, intent(in) :: res
@@ -46,7 +66,7 @@ contains
         integer const4 
         double precision b_x, b_j0 , b_j1 
 
-        r_max = 2 * res !small pixel inscribed in Airy circle
+        r_max = 2 * res ! Small pixel inscribed in Airy circle
         bin_max = int(r_max/fem_bin_width)+1
 
         const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q) 
@@ -60,7 +80,7 @@ contains
             return
         endif
 
-        ! initializing bessel function
+        ! Initialize bessel function
         j0=0.0
         do i=1, const4
             b_x = i*fem_bin_width
@@ -78,7 +98,7 @@ contains
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
             int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
-        call check_allocation(istat, 'Problem allocating memory in fem_initialize.')
+        call check_for_error(istat, 'Problem allocating memory in fem_initialize.')
 
         ! Allocate memory for rot_atom model.
         rot_atom%lx = m%lx
@@ -96,7 +116,7 @@ contains
         rot_atom%zz%nat = rot_atom%natoms
         rot_atom%znum%nat = rot_atom%natoms
         rot_atom%znum_r%nat = rot_atom%natoms
-        call check_allocation(istat, 'Problem allocating memory in fem_initialize.')
+        call check_for_error(istat, 'Problem allocating memory in fem_initialize.')
 
         if( mod(m%lx,pa%phys_diam) >= 0.001 ) then
             write(0,*) "WARNING! Your world size should be an integer multiple of the resolution. Pixel diameter = ", pa%phys_diam, ". World size = ", m%lx
@@ -104,7 +124,7 @@ contains
 
         call read_f_e
         allocate(scatfact_e(m%nelements,nk), stat=istat)
-        call check_allocation(istat, 'Allocation of electron scattering factors table failed.')
+        call check_for_error(istat, 'Allocation of electron scattering factors table failed.')
 
         do j=1,m%nelements
             do i=1, nk
@@ -115,11 +135,11 @@ contains
 
 
     subroutine bessel_func(x,bj0,bj1)
-        IMPLICIT none 
-        doubleprecision A,B,A1,B1,BJ0,BJ1,BY0,BY1,DY0,DY1,X,X2,RP2,DJ0,DJ1,R,DABS
-        doubleprecision EC,CS0,W0,R0,CS1,W1,R1,T1,T2,P0,P1,Q0,Q1,CU,DCOS,DSIN
-        integer k,k0 
-        DIMENSION A(12),B(12),A1(12),B1(12)
+        implicit none 
+        doubleprecision :: A,B,A1,B1,BJ0,BJ1,BY0,BY1,DY0,DY1,X,X2,RP2,DJ0,DJ1,R,DABS
+        doubleprecision :: EC,CS0,W0,R0,CS1,W1,R1,T1,T2,P0,P1,Q0,Q1,CU,DCOS,DSIN
+        integer :: k,k0 
+        dimension :: A(12),B(12),A1(12),B1(12)
 
         RP2=0.63661977236758D0
         X2=X*X
@@ -232,7 +252,7 @@ contains
 
     subroutine init_rot(ntheta, nphi, npsi, num_rot, istat)
     ! Calculates the rotation angles and initializes them into the global
-    ! rotation array rot. The rot_temp variable is probably unnecessary.
+    ! rotation array rot.
         integer, intent(in) :: ntheta, nphi, npsi
         integer, intent(out) :: istat
         integer :: i,j, k, jj
@@ -249,15 +269,15 @@ contains
            return
         endif
 
-        !phi runs from 0 to 2 PI
-        !psi runs from 0 to 2 PI
-        !theta runs from 0 to PI   !not sure any more after weighting by psi angle - JWH 09/03/09
-        !step_size(1) for phi step    
-        !step_size(2) for psi step
-        !step_size(3) for theta step
+        ! phi runs from 0 to 2 PI
+        ! psi runs from 0 to 2 PI
+        ! theta runs from 0 to PI
+        ! step_size(1) for phi step    
+        ! step_size(2) for psi step
+        ! step_size(3) for theta step
         step_size(1) = TWOPI / nphi
         step_size(2) = TWOPI / npsi
-        step_size(3) = PI / ntheta  !not used any more after weighting by psi angle - JWH 09/03/09
+        step_size(3) = PI / ntheta
 
         jj = 1
         do i=1, nphi
@@ -398,18 +418,17 @@ contains
 
         ! initialize the rotated models
         allocate(mrot(nrot), stat=istat)
-        call check_allocation(istat, 'Cannot allocate rotated model array.')
+        call check_for_error(istat, 'Cannot allocate rotated model array.')
 
         ! Calculate all the rotated models and save them in mrot.
-        ! This is actually really fast.
         do i=myid+1, nrot, numprocs
             call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
-            call check_allocation(istat, 'Failed to rotate model')
+            call check_for_error(istat, 'Failed to rotate model')
             mrot(i)%id = i
         enddo
 
         allocate(old_index(nrot), old_pos(nrot), stat=istat)
-        call check_allocation(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
+        call check_for_error(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
         ! Initialize old_index and old_pos arrays. The if statements should
         ! be unnecessary, but they don't hurt. Better safe than sorry.
         do i=myid+1, nrot, numprocs
@@ -472,7 +491,7 @@ contains
         real :: sqrt1_2_res
         real :: k_1
 
-        sqrt1_2_res = SQRT(0.5) * res
+        sqrt1_2_res = sqrt(0.5) * res
         r_max = 2*res ! small pixel inscribed in airy circle
         call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
@@ -492,7 +511,7 @@ contains
         gr_i = 0.0; int_i = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
 
         x2 = 0.0; y2 = 0.0
-        const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q)
+        const1 = twopi*(0.61/res)/fem_bin_width  ! (0.61/res = Q)
         const2 = 1/fem_bin_width
         const3 = TWOPI
 
@@ -581,7 +600,7 @@ contains
             enddo
 
         else if( rot_atom%natoms .ge. mroti%rot_i(atom)%nat ) then
-        ! The number of times the atom appears went up (duplication).
+            ! The number of times the atom appears went up (duplication).
             ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
             ! the number of atoms was changed.
             old_index(i)%nat = -1
@@ -617,7 +636,7 @@ contains
             enddo
 
         else if( mroti%rot_i(atom)%nat .gt. rot_atom%natoms ) then
-        ! The number of times the atom appears in the rotated model went down.
+            ! The number of times the atom appears in the rotated model went down.
             ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
             ! the number of atoms was changed.
             old_index(i)%nat = -1
@@ -678,15 +697,15 @@ contains
 
         istat = 0
         allocate(update_pix(nrot,pa%npix),stat=istat)
-        call check_allocation(istat, 'Cannot allocate memory for pixel update array in fem.')
+        call check_for_error(istat, 'Cannot allocate memory for pixel update array in fem.')
         update_pix = .FALSE.
-        call check_allocation(istat, 'Cannot allocate memory for pixel update array in fem.')
+        call check_for_error(istat, 'Cannot allocate memory for pixel update array in fem.')
 
         ! Create a new model (moved_atom) with only one atom in it and put the
         ! position etc of the moved atom into it.
         allocate(moved_atom%xx%ind(1), moved_atom%yy%ind(1), moved_atom%zz%ind(1), &
             moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
-            moved_atom%composition(1), stat=istat)
+            stat=istat)
         moved_atom%natoms = 1
         ! m_in%xx%ind, etc have already been updated by random_move so these are the
         ! new, moved atom positions.
@@ -700,7 +719,6 @@ contains
         moved_atom%lz = m_in%lz
         moved_atom%nelements = 1
         moved_atom%atom_type(1) = m_in%znum%ind(atom)
-        moved_atom%composition(1) = 1.0
         moved_atom%rotated = .FALSE.
 
         ! Initialize the intensity arrays.
@@ -714,7 +732,6 @@ contains
         ! ------- Rotate models and call intensity on necessary pixels. ------- !
 #ifdef DEBUG
         write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
-        
         write(*,*) "We have", numprocs, "processor(s)."
 #endif
         rotations: do i=myid+1, nrot, numprocs
@@ -757,7 +774,7 @@ contains
             ! the end of the rotations do loop.
             if( .not. ((rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)) ) then
 #ifdef DEBUG
-            write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
+                write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
 #endif
 
                 ! Store the original index(es) and position(s) in old_index and old_pos
@@ -834,10 +851,6 @@ contains
         ! In this loop, 'i' is the model that has intensity called on it.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
-                ! TODO This should be better done for models larger than 1
-                ! pixel, because with the way it is written right now each core
-                ! may do a different number of pixel calculations, so one core
-                ! might do 5 and another core might do 0.
                 if(update_pix(i,m)) then
 #ifdef DEBUG
                     write(*,*) "Calling intensity in MC on pixel (", pa%pix(m,1), ",",pa%pix(m,2), ") in rotated model ", i, "with core", myid
@@ -863,14 +876,6 @@ contains
         write(*,*) "I am core", myid, "and I am past the psum_int setters."
 #endif
 
-        ! psum_int_sq is set is set in the above loop. int_sq is set in the loop
-        ! above that. int_i is set in subroutine intensity.
-        ! mpi_reduce(sendbuff, recievebuff, count, mpi_env, operation, root_processor_id, comm, mpierr)
-        ! sends sendbuff to recievebuff where they have size count doing the
-        ! operation operation. These are stored in the processor id
-        ! root_processor_id. I think this is how it works anyways. I am probably
-        ! somewhat off.
-
         call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
@@ -885,7 +890,7 @@ contains
             end do
         endif
 
-        deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
+        deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, stat=istat)
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
 #ifdef DEBUG
         write(*,*) "I am core", myid, "and I am done with fem_update."
@@ -921,13 +926,12 @@ contains
         real, intent(in) :: xx_cur, yy_cur, zz_cur
         integer :: i, j, istat
         type(model) :: moved_atom
-        !integer, intent(in) :: iii
 
         ! Create a new model (moved_atom) with only one atom in it and put the
         ! position etc of the moved atom into it.
         allocate(moved_atom%xx%ind(1), moved_atom%yy%ind(1), moved_atom%zz%ind(1), &
             moved_atom%znum%ind(1), moved_atom%atom_type(1), moved_atom%znum_r%ind(1), &
-            moved_atom%composition(1), stat=istat)
+            stat=istat)
         moved_atom%natoms = 1
         ! mn%xx%ind, etc have already been updated by random_move so these are the
         ! new, moved atom positions.
@@ -941,7 +945,6 @@ contains
         moved_atom%lz = m%lz
         moved_atom%nelements = 1
         moved_atom%atom_type(1) = m%znum%ind(atom)
-        moved_atom%composition(1) = 1.0
         moved_atom%rotated = .FALSE.
 
 #ifdef DEBUG
@@ -993,7 +996,7 @@ contains
              p%pos(1,2) = yy
              p%pos(1,3) = zz
         endif
-        call check_allocation(istat, 'Error allocating memory in add_pos.')
+        call check_for_error(istat, 'Error allocating memory in add_pos.')
         if (allocated(scratch)) then
             deallocate(scratch)  ! added 3/18/09 pmv 
         endif
@@ -1014,7 +1017,7 @@ contains
         real :: sqrt1_2_res
         real :: x2, y2
 
-        sqrt1_2_res = SQRT(0.5) * res
+        sqrt1_2_res = sqrt(0.5) * res
 
         allocate(sampled_atoms(m%natoms))
         sampled_atoms = 0
@@ -1104,4 +1107,3 @@ contains
 
 
 end module fem_mod
-

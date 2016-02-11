@@ -30,17 +30,17 @@ contains
         all_atom_syms = (/'H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr'/)
 
         open(unit=71,file=trim(eamfile),iostat=istat,form='formatted',status='unknown')
-        read(71,*)  !comment line
-        read(71,*)  !comment line
-        read(71,*)  !comment line
+        read(71,*)  ! comment line
+        read(71,*)  ! comment line
+        read(71,*)  ! comment line
         read(71,*) nelements
         allocate(atom_syms(nelements))
         allocate(atomic_numbers(nelements))
         allocate(reorder(nelements))
         rewind(71)
-        read(71,*)  !comment line
-        read(71,*)  !comment line
-        read(71,*)  !comment line
+        read(71,*)  ! comment line
+        read(71,*)  ! comment line
+        read(71,*)  ! comment line
         read(71,*) nelements, atom_syms
         read(71,*) nrho, drho, nr, dr, eam_max_r
 
@@ -77,7 +77,7 @@ contains
 
         ! The elements in the eam file may not be in increasing
         ! atomic order (which is how znumr is set up) so we need
-        ! to reorder if necessary. I set this up at the beginning.
+        ! to reorder if necessary. I set this up a few lines above.
         do i=1, nelements
             read(71,*) znum(i), mass(i), latt_const(i)
             do k=1, nrho
@@ -114,7 +114,7 @@ contains
 
 
     ! Calculates initial energy of model using eam potential
-    ! Only called once in hrmc. Not used in Femsim of course.
+    ! Only called once in hrmc. Not used in Femsim.
     subroutine eam_initial(m, te1)
         implicit none
         type(model), intent(in) :: m
@@ -141,7 +141,7 @@ contains
                     if(r2.lt.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
-                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
+                        if(rbin == nr+1) rbin = rbin - 1 ! Added this line due to out of bounds error (rounding error?).
                         phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(atoms(j)), rbin)
                         phi2 = phi2 + phi1
                         rho1 = rho(m%znum_r%ind(i), m%znum_r%ind(atoms(j)), rbin)
@@ -198,7 +198,7 @@ contains
                     if(r2.le.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
-                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
+                        if(rbin == nr+1) rbin = rbin - 1 ! Added this line due to out of bounds error (rounding error?).
                         phi1 = phi(m%znum_r%ind(atoms1(i)), m%znum_r%ind(atoms2(j)), rbin)
                         phi2 = phi2 + phi1
                         rho1 = rho(m%znum_r%ind(atoms1(i)), m%znum_r%ind(atoms2(j)), rbin)
@@ -235,7 +235,7 @@ contains
                         if(r2.le.eam_max_r*eam_max_r)then
                             r = sqrt(r2)
                             rbin = int(r/dr)+1
-                            if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
+                            if(rbin == nr+1) rbin = rbin - 1 ! Added this line due to out of bounds error (rounding error?).
                             phi1 = phi(m%znum_r%ind(atoms3(i)), m%znum_r%ind(atoms4(j)), rbin)
                             phi2 = phi2 + phi1
                             rho1 = rho(m%znum_r%ind(atoms3(i)), m%znum_r%ind(atoms4(j)), rbin)

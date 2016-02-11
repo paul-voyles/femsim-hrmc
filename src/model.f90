@@ -2,14 +2,14 @@ module model_mod
 
     use HRMC_Global  ! Global variables
     implicit none
-    ! Derived data type for the hutches.  at is a pointer to a list of the indices
-    ! of the atoms in this hutch.  nat is the number of atoms in this hutch.
+    ! Derived data type for the hutches. at is a pointer to a list of the indices
+    ! of the atoms in this hutch. nat is the number of atoms in this hutch.
     type hutch
         integer, dimension(:), allocatable :: at
         integer :: nat = 0
     end type hutch
 
-    ! derived data type for the hutch array: contains an array of hutches,
+    ! Derived data type for the hutch array: contains an array of hutches,
     ! plus supporting information
     type hutch_array
         ! array of hutch objects
@@ -34,109 +34,32 @@ module model_mod
     end type real_index_list
 
 
-    ! list for a rotated model that is the original models natoms long.  each atom in the list
-    ! list is itself a list of the indices in the new, rotated model of the atoms corresponding
-    ! to the the original atom in the unrotated model.
-    ! for a rotated model, a list of the indices in the rotated model corresponding to each atom
-    ! index in the original, unrotated model.  the original, unrotated model's index long.
     ! Defined type for a structural model with atoms positions and a bunch of metadata
     type model
-        integer :: natoms                              ! number of atoms in the model
-        type(real_index_list) :: xx, yy, zz      ! atom positions in Angstroms
-        type(index_list) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
-        real :: lx, ly, lz                             ! box size, in Angstroms
-        integer :: nelements                           ! # of elements in the model
-        integer, allocatable, dimension(:) :: atom_type    ! array listing atomic numbers present
-        real, allocatable, dimension(:) :: composition     ! fractional composition in the order of atom_type
-        type(hutch_array) :: ha                        ! hutch data structure
-        logical :: rotated                             ! TRUE if model has been rotated, FALSE otherwise
-        integer :: unrot_natoms
-        type(index_list), dimension(:), allocatable :: rot_i ! list of which atoms in the rotated model correspond
-        ! to the index i in the unrotated model
         integer :: id  ! model ID - ranges from 1 to nrot for those in rotated matrix; is 0 for the original m
+        integer :: natoms  ! number of atoms in the model
+        logical :: rotated  ! TRUE if model has been rotated, FALSE otherwise
+        integer :: unrot_natoms  ! # of atoms in the unrotated model (can be different than natoms)
+        real :: lx, ly, lz  ! box size, in Angstroms
+        type(real_index_list) :: xx, yy, zz  ! atom positions in Angstroms
+        type(index_list) :: znum, znum_r  ! atom atomic numbers, and reduced z numbners
+        integer :: nelements ! # of elements in the model
+        integer, allocatable, dimension(:) :: atom_type ! array listing atomic numbers present
+        type(hutch_array) :: ha  ! hutch data structure
+        ! 'rot_i' is a list of which atoms in the rotated model correspond to the index i in the unrotated model
+        type(index_list), dimension(:), allocatable :: rot_i
     end type model
-
-    TYPE hutch_2D_list
-    ! list the relative x, and y position of squre to the center square
-    ! for the atom at a certain position in a squre
-    ! with certain ratio of radius to the square size
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_x
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
-        INTEGER size_d !number of elements in x, y dimension
-    END TYPE hutch_2D_list
-
-    TYPE hutch_2D_array
-    ! list the relative x, and y position of square to the center square
-    ! divide the square into equal 4 parts
-    ! the ratio of radius to the square size range from 0 to 10.5, can be changed
-    ! depending on calculation needed
-        TYPE(hutch_2D_list), DIMENSION(:,:), POINTER :: list_2D
-        !first index refers to relative position of a point in a square
-        !second index refers to ratio of radius to square size
-        !position=relative position of a point in a square
-        !position=j*(number_x-1) + i, where j refers to which y position the
-        !point is in
-        !i refers to which x position the point is in
-        INTEGER size_position
-        REAL, DIMENSION(:), POINTER :: ratio_radius_square
-        INTEGER size_ratio
-    END TYPE hutch_2D_array
-
-    TYPE hutch_3D_list
-    ! list the relative x, y and Z position of squre to the center hutch
-    ! for the atom at a certain position in a hutch
-    ! with certain ratio of radius to the hutch size
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_x
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_z
-        INTEGER size_d !number of elements in x, y and z dimension
-    END TYPE hutch_3D_list
-
-    TYPE hutch_3D_array
-    ! list the relative x, and y position of hutch to the center square
-    ! divide the square into equal 8 parts
-    ! the ratio of radius to the hutch size range from 0 to 10.5, can be changed
-    ! depending on calculation needed
-        TYPE(hutch_3D_list), DIMENSION(:, :), POINTER :: list_3D
-        !first index refers to relative position of a point in a hutch
-        !second index refers to ratio of radius to hutch size
-        !position=relative position of a point in a hutch
-        !position=k*(number_y-1)*(number_x-1)+j*(number_x-1) + i,
-        !where k refers to which z position the point is in
-        !j refers to which y position the point is in
-        !i refers to which x position the point is in
-        INTEGER size_position
-        REAL, DIMENSION(:), POINTER :: ratio_radius_hutch
-        INTEGER size_ratio
-    END TYPE hutch_3D_array
-
 
 contains
 
-    subroutine check_allocation(istat, message)
+    subroutine check_for_error(istat, message)
         integer, intent(in) :: istat
         character(len=*), intent(in) :: message
         if (istat /= 0) then
-            write (*,*) message
+            write (0,*) message
             return
         endif
-    end subroutine check_allocation
-
-
-    subroutine sort(il)
-        ! Insertion sort on index list of ints
-        type(index_list), intent(inout) :: il
-        integer :: i, j, temp
-        do i=1, il%nat
-            do j=1, i
-                if( il%ind(i) < il%ind(j) ) then
-                    temp = il%ind(i)
-                    il%ind(i) = il%ind(j)
-                    il%ind(j) = temp
-                end if
-            end do
-        end do
-    end subroutine sort
+    end subroutine check_for_error
 
 
     subroutine read_model(model_filename, m, istat)
@@ -166,26 +89,27 @@ contains
 
         ! Open file that contains the model information.
         open(1,file=trim(model_filename),iostat=istat,status='old')
-        call check_allocation(istat, "Error in opening flie, "//model_filename)
+        call check_for_error(istat, "Error in opening flie, "//model_filename)
 
         read(1,*) m%natoms
         read(1,*) m%lx,m%ly,m%lz
 
         ! Set the number of atoms in the model m and allocate space for each coordinate.
         ! Allocate the model to twice its necessary size so that we never have to reallocate ever.
+        ! Note that when an atom gets rotated, it can get rotated in twice.
         allocate(m%xx%ind(m%natoms*2), m%yy%ind(m%natoms*2), m%zz%ind(m%natoms*2), m%znum%ind(m%natoms*2), stat=istat)
         m%xx%nat = m%natoms
         m%yy%nat = m%natoms
         m%zz%nat = m%natoms
         m%znum%nat = m%natoms
         m%znum_r%nat = m%natoms
-        call check_allocation(istat, 'Unable to allocate memory for the model being read.')
+        call check_for_error(istat, 'Unable to allocate memory for the model being read.')
 
         ! If the model is not a perfect cube then the rest of the calculations
         ! wont work, so we really should check that.
         if((m%lx /= m%ly) .or. (m%lx /= m%lz)) then
-            write(*,*) "The model is not a cube and will work correctly. Exiting."
-            return
+            write(0,*) "ERROR! The model is not a cube and will work correctly. Exiting."
+            stop
         endif
         ! Read the atomic numbers and atom positions directly into the model.
         do i=1,m%natoms
@@ -208,51 +132,37 @@ contains
         end do
 
         ! Note: nelements is usually between 1 and 5 so these loops are tiny.
-        ! Set m%atom_type to contain the atom types; set m%composition to
-        ! contain the percent composition (as a number between 0 and 1).
-        allocate(m%atom_type(m%nelements), m%composition(m%nelements), stat=istat)
-        call check_allocation(istat, 'Unable to allocate memory for m%atom_type and m%composition.')
-        ! Initialize the composition array to 0.0
-        m%composition = 0.0
+        ! Set m%atom_type to contain the atom types
+        allocate(m%atom_type(m%nelements), stat=istat)
+        call check_for_error(istat, 'Unable to allocate memory for m%atom_type.')
         ! i corresponds to the atomic number.
-        ! j is the next open position in composition and atom_type.
+        ! j is the next open position in atom_type.
         j = 1
         do i=1, 103
             if(elements(i) /= 0) then
                 ! If we reach a non-zero element in elements then there are
                 ! atoms with atomic number i in the model. Append this atomc
-                ! number to atom_types and calculate the fractional composition
-                ! of this element in the model, storing it in m%composition.
-                ! Increment j to move to the next open spot.
+                ! number to atom_types. Increment j to move to the next open spot.
                 m%atom_type(j) = i
-                m%composition(j) = real(elements(i)) / real(m%natoms)
                 j = j + 1
             end if
         end do
-        ! Note that m%atom_type and m%composition are now linked. You can look
-        ! at m%composition, but you still won't know which element has this
-        ! fractional composition. You need to look at the same index in
-        ! m%atom_type in order to figure this out.
 
-        ! Sort atom_type by increasing atomic order. Re-order composition in the
-        ! same way so the indices stay in sync. (Insertion sort)
+        ! Sort atom_type by increasing atomic order. (Insertion sort)
         do i=1, m%nelements
             do j=1, i
                 if( m%atom_type(i) < m%atom_type(j) ) then
                     atom_temp = m%atom_type(i)
-                    comp_temp = m%composition(i)
                     m%atom_type(i) = m%atom_type(j)
-                    m%composition(i) = m%composition(j)
                     m%atom_type(j) = atom_temp
-                    m%composition(j) = comp_temp
                 end if
             end do
         end do
 
         ! For each atom i, add a parameter znum_r(i) that corresponds to
-        ! m%atom_type and m%composition for fast lookup.
+        ! m%atom_type for fast lookup.
         allocate(m%znum_r%ind(m%natoms*2), stat=istat)
-        call check_allocation(istat, 'Unable to allocate memory for m%znum_r.')
+        call check_for_error(istat, 'Unable to allocate memory for m%znum_r.')
         m%znum_r%ind = 0.0
         do i=1, m%natoms
             do j=1, m%nelements
@@ -267,21 +177,18 @@ contains
         call check_model(m,istat)
 
         ! Calls hutch_position and hutch_add_atom in loops.
-        ! It does some allocation too.
-        call model_init_hutches(m, istat)
+        ! It also does some allocation.
+        call model_init_hutches(m)
     end subroutine read_model
 
 
     subroutine recenter_model(xc, yc, zc, m)
-    ! Shifts the atom positions in model so that the mid-point between the maximum and
+    ! Shifts the atom positions in model m so that the mid-point between the maximum and
     ! and minimum atom positions in each dimensions sits at the position (xc, yc, zc),
     ! measured in units of the model supercell.
-    ! BIGO(natoms)*6
         real, intent(in) :: xc, yc, zc
         type(model), intent(inout) :: m
         real :: xshift, yshift, zshift
-        ! maxval gets the maximum value in the array. There are some
-        ! nice parameters for it described online by the way.
         xshift = xc*m%lx - (maxval(m%xx%ind(1:m%natoms)) + minval(m%xx%ind(1:m%natoms)))/2.0
         yshift = yc*m%ly - (maxval(m%yy%ind(1:m%natoms)) + minval(m%yy%ind(1:m%natoms)))/2.0
         zshift = zc*m%lz - (maxval(m%zz%ind(1:m%natoms)) + minval(m%zz%ind(1:m%natoms)))/2.0
@@ -296,7 +203,7 @@ contains
     ! simple error checking on a model.  Currently checks: are all the  
     ! atoms in the box?  Are all the atomic numbers between 1 and 103
     ! (the range for which Kirkland calculated electron scattering factors)
-    ! More should be added as we think of it.
+    ! Never called within HRMC.
         type(model), intent(in) :: m 
         integer, intent(out) :: istat
         real xlen, ylen, zlen 
@@ -333,7 +240,7 @@ contains
     end subroutine check_model
 
     subroutine rotate_atom(phi, psi, theta, min, mrot, istat)
-        ! rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
+        ! Rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
         ! min should be a single atom model.
         real, intent(in) :: theta, phi, psi
         type(model), intent(in) :: min
@@ -427,12 +334,12 @@ contains
         enddo
 
         ! Release the memory allocated to mt
-        deallocate(mt%atom_type, mt%composition)
+        deallocate(mt%atom_type)
         deallocate(mt%znum%ind,mt%znum_r%ind, mt%xx%ind, mt%yy%ind, mt%zz%ind)
     end subroutine rotate_atom
 
     subroutine rotate_model(phi, psi, theta, min, mrot, istat)
-        ! rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
+        ! Rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
         real, intent(in) :: theta, phi, psi
         type(model), intent(in) :: min
         type(model), intent(out) :: mrot 
@@ -513,7 +420,7 @@ contains
         mrot%zz%nat = mrot%natoms
         mrot%znum%nat = mrot%natoms
         mrot%znum_r%nat = mrot%natoms
-        call check_allocation(istat, 'Problem allocating memory in rotate_model.')
+        call check_for_error(istat, 'Problem allocating memory in rotate_model.')
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
@@ -533,7 +440,6 @@ contains
                         mrot%znum%ind(j) = mt%znum%ind(i)
                         mrot%znum_r%ind(j) = mt%znum_r%ind(i)
                         call add_index(mrot%rot_i(orig_indices(i)), j)
-                        !write(*,*) "Atom", orig_indices(i), "has rot_i=", mrot%rot_i(orig_indices(i))%ind
                         j = j+1
                     endif
                 endif
@@ -541,7 +447,7 @@ contains
         enddo
 
         ! Release the memory allocated to mt
-        deallocate(mt%atom_type, mt%composition)
+        deallocate(mt%atom_type)
         deallocate(mt%znum%ind,mt%znum_r%ind, mt%xx%ind, mt%yy%ind, mt%zz%ind)
 
         ! Set the rest of of the rotated model paramters
@@ -551,13 +457,9 @@ contains
         mrot%rotated = .TRUE.
         mrot%unrot_natoms = min%natoms
 
-        if(mrot%natoms .ne. 0) then !added by jwh 03/26/2009
-            call composition_model(mrot) ! have to recalculate this because the # of atoms may have changed a little
-        endif
+        call model_init_hutches(mrot)
 
-        call model_init_hutches(mrot, istat)
-
-        if(allocated(orig_indices)) then !added by feng yi on 3/14/2009
+        if(allocated(orig_indices)) then
             deallocate(orig_indices)
         endif
 
@@ -565,44 +467,36 @@ contains
     end subroutine rotate_model
 
 
-    subroutine model_init_hutches(m, status)
+    subroutine model_init_hutches(m)
     ! Initializes the hutch_array ha within the model m. It calcualtes the
     ! hutch_size (based on the model box size and the parameter
     ! ATOMS_PER_HUTCH) and the number of hutches in the array (nhutch_x, nhutch_y,
-    ! and hhutch_z). It then assigns all the atoms in the current model atom
+    ! and nhutch_z). It then assigns all the atoms in the current model atom
     ! position arrays xa, ya, and za to the appropriate hutches.  It does NOT
     ! check whether ha has already been initialized, so this routine should
     ! NEVER be called more than once for the same hutch_array.
         type(model), intent(inout) :: m
-        integer, intent(out) :: status
         integer :: istat, numhutches, hx, hy, hz, i
         ! Note: numhutches is not the total number of hutches, it is the number
         ! of hutches in each dimension. So numhutches^3 is the total.
 
-        status = 0
-
         numhutches = anint( (m%natoms/ATOMS_PER_HUTCH)**(1./3.) )
         m%ha%hutch_size = m%lx / numhutches 
-        !write (*,*) 'Hutch size is ',m%ha%hutch_size,' Angstroms.'
-        !write (*,*) 'Number of hutch in each dimension is: ', numhutches
+#ifdef DEBUG
+        write (*,*) 'Hutch size is ',m%ha%hutch_size,' Angstroms.'
+        write (*,*) 'Number of hutch in each dimension is: ', numhutches
+#endif
 
         m%ha%nhutch_x = numhutches 
         m%ha%nhutch_y = numhutches 
         m%ha%nhutch_z = numhutches 
 
         allocate(m%ha%h(m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z), stat=istat)
-        if (istat /= 0) then
-            write (*,*) 'Cannot allocate memory for hutch algorithm.  Exiting.'
-            status = 1
-            return
-        end if
+        call check_for_error(istat, 'Cannot allocate memory for hutch algorithm.  Exiting.')
 
         allocate(m%ha%atom_hutch(m%natoms, 3), stat=istat)
-        if (istat /= 0) then
-            write(*,*) 'Cannot allocate memory for hutch algorithm.  Exiting.'
-            status = 1
-            return
-        end if
+        call check_for_error(istat, 'Cannot allocate memory for hutch algorithm.  Exiting.')
+
         m%ha%atom_hutch = 0
 
         ! These hutch atom arrays are allocated and initialized in
@@ -611,7 +505,6 @@ contains
         do hx = 1, m%ha%nhutch_x
             do hy = 1, m%ha%nhutch_y
                 do hz = 1, m%ha%nhutch_z
-                    ! I don't think we need the line below.
                     if(allocated(m%ha%h(hx,hy,hz)%at)) then
                         deallocate(m%ha%h(hx,hy,hz)%at)
                         m%ha%h(hx,hy,hz)%nat = 0
@@ -630,7 +523,7 @@ contains
 
 
     subroutine hutch_position(m, xx, yy, zz, hx, hy, hz)
-    ! returns the indices of the hutch that encompasses position (xx, yy, zz) in
+    ! Returns the indices of the hutch that encompasses position (xx, yy, zz) in
     ! the hutch_array in the integers (hx, hy, hz).  It assumes that the model 
     ! extends from -lx/2 to lx/2, -ly/2 to ly/2 and -lz/2 to lz/2 and does no
     ! error checking.
@@ -669,13 +562,13 @@ contains
 
         mout%natoms = min%natoms*xp*yp*zp
         allocate(mout%xx%ind(mout%natoms), mout%yy%ind(mout%natoms), mout%zz%ind(mout%natoms), &
-             mout%znum%ind(mout%natoms), mout%znum_r%ind(mout%natoms),stat=istat) !modified by Feng Yi on 03/19/2009
+             mout%znum%ind(mout%natoms), mout%znum_r%ind(mout%natoms),stat=istat)
         mout%xx%nat = mout%natoms
         mout%yy%nat = mout%natoms
         mout%zz%nat = mout%natoms
         mout%znum%nat = mout%natoms
         mout%znum_r%nat = mout%natoms
-        call check_allocation(istat, 'Error allocating memory for the periodic continued model.')
+        call check_for_error(istat, 'Error allocating memory for the periodic continued model.')
 
         mout%lx = min%lx*real(xp)
         mout%ly = min%ly*real(yp)
@@ -699,86 +592,22 @@ contains
         end do
 
         mout%nelements = min%nelements
-        allocate(mout%atom_type(mout%nelements), mout%composition(mout%nelements), stat=istat)
-        call check_allocation(istat, 'Problem allocating memory in periodic_continue_model.')
+        allocate(mout%atom_type(mout%nelements), stat=istat)
+        call check_for_error(istat, 'Problem allocating memory in periodic_continue_model.')
         mout%atom_type = min%atom_type
-        mout%composition = mout%composition
 
         if(init_hutch) then
-            call model_init_hutches(mout, istat)
-            call check_allocation(istat, 'Cannot allocate memeory for the new hutch_array.')
+            call model_init_hutches(mout)
+            call check_for_error(istat, 'Cannot allocate memeory for the new hutch_array.')
         endif
     end subroutine periodic_continue_model
 
 
-    subroutine composition_model(m)
-    ! Calculates the composition of the model and fills in nelements, atom_type, and composition.
-        type(model), intent(inout) :: m
-        integer, dimension(103) :: znum_list
-        integer :: i, j, isnew
-        integer temp1
-        real temp2 ! for temporary storage
-
-        m%nelements=1
-        znum_list(1) = m%znum%ind(1)
-        do i=1,m%natoms
-            isnew = 1
-            do j=1,m%nelements
-                ! If atom i's atomic number is already in the list, don't add
-                ! its atomic number to the list again.
-                if(m%znum%ind(i) == znum_list(j)) isnew = 0
-            enddo
-            if (isnew /= 0) then
-                m%nelements=m%nelements+1
-                znum_list(m%nelements) = m%znum%ind(i)
-            endif
-        enddo
-
-        if( .not. allocated(m%atom_type) ) then
-            allocate(m%atom_type(m%nelements))
-        endif
-        if( .not. allocated(m%composition) ) then
-            allocate(m%composition(m%nelements))
-        endif
-        m%atom_type = znum_list(1:m%nelements)
-        m%composition = 0.0
-
-        do i = 1, m%natoms
-            do j=1,m%nelements
-                if(m%atom_type(j) == m%znum%ind(i)) then
-                    m%composition(j) = m%composition(j) + 1.0
-                    cycle
-                endif
-            enddo
-        enddo
-
-        m%composition = m%composition / real(m%natoms)
-
-        ! Floating bubble method
-        do i=1, (size(m%atom_type)-1)
-            do j=1, (size(m%atom_type)-i)
-                if(m%atom_type(j) .gt. m%atom_type(j+1)) then
-                    temp1 = m%atom_type(j)
-                    m%atom_type(j) = m%atom_type(j+1)
-                    m%atom_type(j+1) = temp1
-
-                    temp2 = m%composition(j)
-                    m%composition(j) = m%composition(j+1)
-                    m%composition(j+1) = temp2
-                endif
-            enddo
-        enddo
-    end subroutine composition_model
-
-
     subroutine hutch_list_3D(m, px, py, pz, radius, atoms, istat, nlist)
-    ! Returns the atoms (aka atom indices) that are within radius radius of 
+    ! Returns the atoms (aka atom indices) that are within radius 'radius' of 
     ! position (px,py,pz) in the list 'atoms'. Stores in nlist the number of
     ! atoms in this radius (i.e. size(atoms)+1 because of the original atom).
     ! Returns 1 in istat if memory allocation fails and -1 if no atoms are found.
-    ! I checked this function by hand on one of the models and it works exactly
-    ! how it should - i.e. it does return exactly the correct hutches/atoms. You
-    ! can check by uncommenting the used_hutches lines.
 
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, pz, radius
@@ -787,22 +616,17 @@ contains
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
-        integer :: i, j, k  ! counting variables
+        integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
         real, dimension(3) :: hcenter
         real :: dist2, distx, disty, distz
         integer :: i_start, i_end, j_start, j_end, k_start, k_end
         real :: x_start, x_end, y_start, y_end, z_start, z_end
-        !integer, dimension(11,11,11) :: used_hutches
-        !integer i2, j2, k2 !consider the hutch across the box boundary
 
         ! Allocatae temp_atoms with the max number of atoms so that no matter
         ! how many we find, there will always be enough room.
         allocate(temp_atoms(m%natoms), stat=istat)
-        if (istat /= 0) then
-            write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel'
-            return
-        end if
+        call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel')
 
         x_start = px-radius
         x_end = px+radius
@@ -810,12 +634,15 @@ contains
         y_end = py+radius
         z_start = pz-radius
         z_end = pz+radius
-        if(x_start < -m%lx/2.0) x_start = x_start + m%lx !PBC
-        if(x_end > m%lx/2.0) x_end = x_end - m%lx !PBC
-        if(y_start < -m%ly/2.0) y_start = y_start + m%ly !PBC
-        if(y_end > m%ly/2.0) y_end = y_end - m%ly !PBC
-        if(z_start < -m%lz/2.0) z_start = z_start + m%lz !PBC
-        if(z_end > m%lz/2.0) z_end = z_end - m%lz !PBC
+
+        ! Periodic boundary conditions
+        if(x_start < -m%lx/2.0) x_start = x_start + m%lx
+        if(x_end > m%lx/2.0) x_end = x_end - m%lx
+        if(y_start < -m%ly/2.0) y_start = y_start + m%ly
+        if(y_end > m%ly/2.0) y_end = y_end - m%ly
+        if(z_start < -m%lz/2.0) z_start = z_start + m%lz
+        if(z_end > m%lz/2.0) z_end = z_end - m%lz
+
         call hutch_position(m, x_start, y_start, z_start, i_start, j_start, k_start)
         call hutch_position(m, x_end, y_end, z_end, i_end, j_end, k_end)
 
@@ -916,7 +743,7 @@ contains
         ! I am going to do a slight approximation in this function, but it will
         ! be very close. Considering the hutches are currently so small and
         ! contain only an atom or two, the additional hutches that will be
-        ! included are not detrimental.
+        ! included are not detrimental. Also, it cannot affect the results.
         ! The idea is to iterate through each hutch, calculate its center,
         ! and compute the distance from its center to (px,py) in the x-y plane;
         ! if this distance is <= diameter/2 + m%ha%hutch_size/sqrt(2.0) then we
@@ -924,15 +751,6 @@ contains
         ! the area we want to include + the "radius" (half diagonal) of the
         ! hutch. The half diagonal of the hutch may be a bit of an
         ! overapprximation, but it isnt much of one.
-
-        ! I would like to update this function to pre-calculate the bounds on
-        ! the do loops, but I dont know how due to the curvature of the circle.
-        ! I could do the exact same thing as in hutch_list_pixel_sq with the
-        ! bounds, but then also check in the if statement. This would reduce the
-        ! iterations in the do loop, but the if statement would still be
-        ! necessary. Doing this (which I have done) gives us a circle incribed
-        ! in a square, and we need to exclude the hutches not in the circle but
-        ! still in the square.
 
         x_start = px-diameter/2.0
         x_end = px+diameter/2.0
@@ -1007,21 +825,23 @@ contains
         integer :: i_start, i_end, j_start, j_end, trash
         real :: x_start, x_end, y_start, y_end
 
-        !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
+#ifdef DEBUG
+        write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
+#endif
         allocate(temp_atoms(m%natoms), stat=istat)
-        if (istat /= 0) then
-            write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel'
-            return
-        end if
+        call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel')
 
         x_start = px-diameter/2.0
         x_end = px+diameter/2.0
         y_start = py-diameter/2.0
         y_end = py+diameter/2.0
-        if(x_start < -m%lx/2.0) x_start = x_start + m%lx !PBC
-        if(x_end > m%lx/2.0) x_end = x_end - m%lx !PBC
-        if(y_start < -m%ly/2.0) y_start = y_start + m%ly !PBC
-        if(y_end > m%ly/2.0) y_end = y_end - m%ly !PBC
+
+        ! Periodic boundary conditions
+        if(x_start < -m%lx/2.0) x_start = x_start + m%lx
+        if(x_end > m%lx/2.0) x_end = x_end - m%lx
+        if(y_start < -m%ly/2.0) y_start = y_start + m%ly
+        if(y_end > m%ly/2.0) y_end = y_end - m%ly
+
         call hutch_position(m, x_start, y_start, 0.0, i_start, j_start, trash)
         call hutch_position(m, x_end, y_end, 0.0, i_end, j_end, trash)
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
@@ -1052,10 +872,7 @@ contains
         ! Assign atoms to the subset of temp_atoms that was filled in.
         if( nlist > 1 ) then
             allocate(atoms(nlist-1), stat=istat)
-            if (istat /= 0) then
-                write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
-                return
-            endif
+            call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel.')
             atoms = temp_atoms
         else
             nullify(atoms)
@@ -1067,7 +884,7 @@ contains
 
 
     subroutine hutch_move_atom(m, atom, xx, yy, zz)
-    ! Moves the atom with index atom from its current hutch in hutch_array to
+    ! Moves the atom with index atom from its current hutch in hutch_array
     ! to the hutch that encompasses position (xx, yy, zz). Used to update the
     ! hutch_array for a Monte Carlo move of one atom.
         type(model), target, intent(inout) :: m
@@ -1091,17 +908,16 @@ contains
         logical :: found
         ha => m%ha
 
-        !Error checking.
+#ifdef DEBUG
         found = .false.
         do i=1, ha%h(hx,hy,hz)%nat
             if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
         enddo
         if(found) write(*,*) "WARNING: ERROR: Atom", atom, "already exists in hutch", hx, hy, hz
+#endif
 
         ! ha%h(hx,hy,hz)%nat is set to 0 in a do loop in model_init_hutches,
         ! slightly before this function is called for each atom.
-        ! TODO I should be able to use add_index and remove_index in functions
-        ! like this. That would be ideal.
         nat = ha%h(hx,hy,hz)%nat
         if(nat > 0) then
             if(size(ha%h(hx,hy,hz)%at) > nat) then
@@ -1123,7 +939,6 @@ contains
 
         ha%h(hx,hy,hz)%nat = nat+1
         ! Create space if there isnt already.
-        ! I am lucky that this array allocation works.
         if( size(ha%atom_hutch) / 3 < atom ) then
             allocate(temp_atom_hutch( size(ha%atom_hutch) / 3, 3))
             temp_atom_hutch = ha%atom_hutch
@@ -1137,17 +952,18 @@ contains
         ha%atom_hutch(atom, 2) = hy
         ha%atom_hutch(atom, 3) = hz
 
-        !Error checking.
+#ifdef DEBUG
         found = .false.
         do i=1, ha%h(hx,hy,hz)%nat
             if( ha%h(hx,hy,hz)%at(i) .eq. atom ) found = .true.
         enddo
         if( .not. found) write(*,*) "WARNING: Tried to add atom",atom,"to hutch", hx, hy, hy, "but failed!"
+#endif
     end subroutine hutch_add_atom
 
 
     subroutine hutch_remove_atom(m, atom)
-    ! remove atom atom from its current hutch.  This reduces the number of atoms in hutch
+    ! Remove atom atom from its current hutch.  This reduces the number of atoms in hutch
     ! array by one, so it should only be used in conjunction with hutch_add_atom.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom
@@ -1160,7 +976,7 @@ contains
         hy = ha%atom_hutch(atom,2)
         hz = ha%atom_hutch(atom,3)
 
-        ! Error checking.
+#ifdef DEBUG
         found = .false.
         do i=1, ha%h(hx,hy,hz)%nat
             if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
@@ -1168,6 +984,7 @@ contains
         if(.not. found) then
             write(*,*) "WARNING: ERROR: Atom", atom, "does not exist in hutch", hx, hy, hz, "and you are trying to remove it!"
         endif
+#endif
 
         do i=1, ha%h(hx,hy,hz)%nat
             if (ha%h(hx,hy,hz)%at(i) .eq. atom) then
@@ -1192,13 +1009,14 @@ contains
         m%zz%ind(atom) = zz
         call hutch_move_atom(m, atom, xx, yy, zz)
 
-        !Error checking.
+#ifdef DEBUG
         if( m%xx%ind(atom) .ne. xx .or. m%yy%ind(atom) .ne. yy .or.  m%zz%ind(atom) .ne. zz) then
             write(*,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
             write(*,*) m%xx%ind(atom), xx
             write(*,*) m%yy%ind(atom), yy
             write(*,*) m%zz%ind(atom), zz
         endif
+#endif
     end subroutine move_atom
 
 
@@ -1211,11 +1029,9 @@ contains
         ! We need to add an atom to xx, yy, zz, znum, znum_r, and the hutches.
         ! We need to increment natoms.
         ! We need to add a spot to rot_i with the correct index we used in xx, etc.
-        ! We need to update the model's composition.
-        ! We should check nelements and atom_type as well, but I am going to
-        ! leave this out because it is so rare that we will remove the last atom
-        ! of an atom type, and then re-add it later.
-        !write(*,*) "A wild atom appeared!"
+#ifdef DEBUG
+        write(*,*) "A wild atom appeared!"
+#endif
 
         ! We place the extra atom at the end of the above arrays, and therefore
         ! the new atom has index m%natoms+1.
@@ -1232,9 +1048,6 @@ contains
         m%natoms = m%natoms + 1
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
         call hutch_add_atom(m, m%natoms, hx, hy, hz)
-
-        ! Recalculate composition of model because it may have changed.
-        call composition_model(m)
     end subroutine add_atom
 
 
@@ -1242,24 +1055,16 @@ contains
         ! We need to remove atom ind from xx, yy, zz, znum, znum_r, and the hutches.
         ! We need to decrement natoms.
         ! We need to remove the spot from rot_i with the correct index we used in xx, etc.
-        ! We need to update the model's composition.
-        ! We should check nelements and atom_type as well, but I am going to
-        ! leave this out because it is so rare that we will remove the last atom
-        ! of an atom type.
         type(model), intent(inout) :: m
         integer, intent(in) :: atom ! index of atom in unroated model.
         integer, intent(in) :: ind ! index of atom to remove from m
         integer :: i, j, temp, hx, hy, hz
         integer, dimension(:,:), allocatable :: temp_atom_hutch
-        !write(*,*) "An atom ran away!"
+#ifdef DEBUG
+        write(*,*) "An atom ran away!"
+#endif
 
-        temp = ind ! After I call remove_index on m%rot_i, ind is changed to 0
-        ! since it is in an array. This seems like a fault of Fortran, but
-        ! nevertheless I need to get around it by creating a new var temp and just
-        ! setting it to ind before it gets changed. Then I will use temp after.
-        ! I am assuming this happens because arrays are passed by reference, and
-        ! since ind is part of an array, it is also passed by ref. This still
-        ! shouldnt happen since I have it defined as an integer, intent(in).
+        temp = ind
         
         ! Remove ind from xx, yy, zz, znum, znum_r, and rot_i(atom).
         ! These calls decrement the index of all atoms with a higher index than
@@ -1277,7 +1082,7 @@ contains
                 exit
             endif
         enddo
-        ! Hereafter ind is not what it was before!
+        ! Hereafter ind is not what it was before! Must use temp instead.
 
         ! Decrement every index in each rot_i that is higher than ind.
         ! We need to do this because we removed an element from each of the
@@ -1324,9 +1129,6 @@ contains
         deallocate(temp_atom_hutch)
 
         m%natoms = m%natoms - 1
-
-        ! Recalculate composition of model because it may have changed.
-        call composition_model(m)
     end subroutine remove_atom
 
 
@@ -1350,7 +1152,6 @@ contains
                 il%nat = il%nat + 1
                 deallocate(il%ind)
                 allocate(il%ind( il%nat*2 ))
-                !allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
                 il%ind(1:il%nat-1) = scratch
                 il%ind(il%nat) = i
             endif
@@ -1384,7 +1185,6 @@ contains
                 il%nat = il%nat + 1
                 deallocate(il%ind)
                 allocate(il%ind( il%nat + il%nat*2 ))
-                !allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
                 il%ind(1:il%nat-1) = scratch
                 il%ind(il%nat) = i
             endif
@@ -1419,8 +1219,8 @@ contains
         type(model), intent(inout) :: m
         integer, intent(in) :: atom
         real, intent(in) :: xx_cur, yy_cur, zz_cur
-        !The moved atom in the original model, m, should return to their old position
-        !when the random move is rejected
+        ! The moved atom in the original model, m, should return to their old position
+        ! when the random move is rejected
         m%xx%ind(atom) = xx_cur
         m%yy%ind(atom) = yy_cur
         m%zz%ind(atom) = zz_cur
