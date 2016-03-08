@@ -446,8 +446,8 @@ contains
         enddo
 
         call mpi_barrier(comm, mpierr)
-        call mpi_reduce (psum_int, sum_int, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
-        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int, sum_int, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
 
         if(myid.eq.0)then
             do i=1, nk
@@ -865,8 +865,8 @@ contains
 #endif
 
         call mpi_barrier(comm, mpierr)
-        call mpi_reduce (psum_int, sum_int, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
-        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int, sum_int, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
 #ifdef DEBUG
         write(*,*) "I am core", myid, "and I am past mpi_reduce."
 #endif

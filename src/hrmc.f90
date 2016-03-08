@@ -78,13 +78,15 @@ program hrmc
         if (istat == 0) then
             jobID = "_"//trim(c)
         else
-            error stop "istat for jobid get_command_arg was nonzero"
+            write(0, *) "istat for jobid get_command_arg was nonzero"
+            stop 1
         end if
         call get_command_argument(2, c, length, istat)
         if (istat == 0) then
             param_filename = trim(c)
         else
-            error stop "istat for paramfile get_command_arg was nonzero"
+            write(0, *) "istat for paramfile get_command_arg was nonzero"
+            stop 1
         end if
         param_filename = trim(param_filename)
 
