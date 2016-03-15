@@ -103,7 +103,6 @@ CONTAINS
   ! Generates a random move of one atom.
   ! The actual positions are not changed, just returned.
   subroutine random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, alpha)
-    use mpi  
     type(model), intent(inout) :: m
     integer iseed, w
     real alpha, aa, bb, cc

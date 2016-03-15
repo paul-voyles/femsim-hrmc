@@ -31,6 +31,12 @@ ifneq (,$(findstring femsim,$(MAKECMDGOALS)))
 FCFLAGS += -DFEMSIM
 endif
 
+ifneq (,$(findstring serial,$(MAKECMDGOALS)))
+FCFLAGS += -DSERIAL
+FC = ifort
+MAKECMDGOALS := $(filter-out serial,$(MAKECMDGOALS))
+endif
+
 
 .PHONY: clean debug nothing hrmc femsim
 .SUFFIXES: .f90 .o

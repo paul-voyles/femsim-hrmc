@@ -10,7 +10,11 @@ program hrmc
     use hrmc_functions
     use eam_mod
     implicit none
+#ifndef SERIAL
     include 'mpif.h'
+#else
+    integer :: mpi_comm_world
+#endif
     ! Femsim  variables
     type(model) :: m
     character (len=256) :: model_filename
@@ -69,9 +73,15 @@ program hrmc
     femsim = .false.
 #endif
 
+#ifndef SERIAL
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr)
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
+#else
+    myid = 0
+    mpi_comm_world = 0
+    numprocs = 1
+#endif
 
     if(myid .eq. 0) then
         call get_command_argument(1, c, length, istat)
@@ -107,7 +117,9 @@ program hrmc
     !------------------- Read inputs and initialize. -----------------!
 
     ! Set input filenames.
+#ifndef SERIAL
     call mpi_bcast(param_filename, 256, MPI_CHARACTER, 0, mpi_comm_world, mpierr)
+#endif
     if(myid.eq.0) write(*,*) "Paramfile: ", trim(param_filename)
     
     ! Read input parameters
@@ -173,7 +185,9 @@ program hrmc
 
     !------------------- Start HRMC. -----------------!
 
+#ifndef SERIAL
     call mpi_barrier(mpi_comm_world, mpierr)
+#endif
 
         ! Calculate initial chi2
         chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
@@ -203,6 +217,7 @@ program hrmc
 
 
         ! HRMC loop begins.
+        te2 = te1
         do while (i .le. step_end)
             i = i + 1
 
@@ -247,7 +262,9 @@ program hrmc
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
                 chi2_new = chi2_no_energy + te2
                 del_chi = chi2_new - chi2_old
+#ifndef SERIAL
                 call mpi_bcast(del_chi, 1, mpi_double, 0, mpi_comm_world, mpierr)
+#endif
 
                 ! Test if the move should be accepted or rejected based on del_chi
                 if(del_chi < 0.0) then
@@ -304,7 +321,7 @@ program hrmc
                 else if(.not. energy_accepted) then
                     write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta, te2, te1
                 else
-                    write(*,*) "MC move rejected."
+                    write(*,*) "MC move rejected.", chi2_old, chi2_new
                     acceptance_array(mod(i,100)+1) = 0
                 endif
 
@@ -406,6 +423,8 @@ program hrmc
         endif
 #endif
 
+#ifndef SERIAL
     call mpi_finalize(mpierr)
+#endif
 
 end program hrmc

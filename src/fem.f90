@@ -255,7 +255,9 @@ contains
 
 
     subroutine fem(m, res, k, vk, scatfact_e, comm, istat, rot_begin, rot_end)
+#ifndef SERIAL
         use mpi
+#endif
         implicit none
         type(model), intent(in) :: m
         real, intent(in) :: res
@@ -328,13 +330,19 @@ contains
 #endif
         enddo
 
+#ifndef SERIAL
         call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
+#else
+        sum_int = psum_int
+        sum_int_sq = psum_int_sq
+#endif
 
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
+                write(*,*) "V(k) = ", Vk
             end do
         endif
 
@@ -344,7 +352,9 @@ contains
     subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat)
     ! Calculates int_i for output.
         use  omp_lib
+#ifndef SERIAL
         include 'mpif.h'
+#endif
         type(model), intent(inout) :: m_int
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
@@ -551,7 +561,9 @@ contains
 
 
     subroutine fem_update(m_in, atom, res, k, vk, scatfact_e, comm, istat)
+#ifndef SERIAL
         use mpi
+#endif
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
         real, intent(in) :: res
@@ -747,9 +759,14 @@ contains
         write(*,*) "I am core", myid, "and I am past the psum_int setters."
 #endif
 
+#ifndef SERIAL
         call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_double_precision, mpi_sum, 0, comm, mpierr)
+#else
+        sum_int = psum_int
+        sum_int_sq = psum_int_sq
+#endif
 #ifdef DEBUG
         write(*,*) "I am core", myid, "and I am past mpi_reduce."
 #endif
@@ -772,13 +789,11 @@ contains
     subroutine fem_accept_move()
     ! Accept the move.  The atom positions are already changed in the rotated
     ! models, so we only need to clear old_index and old_pos arrays for reuse.
-        use mpi
         call fem_reset_old()
     end subroutine fem_accept_move
 
 
     subroutine fem_reset_old()
-        use mpi
         integer :: i
         do i=myid+1, nrot, numprocs
             old_index(i)%nat = 0
@@ -791,7 +806,6 @@ contains
 
     subroutine fem_reject_move(m, atom, xx_cur, yy_cur, zz_cur) !, iii)
     ! Reject the move. If the atom was simply moved, unmove it using old_pos and old_index.
-        use mpi
         type(model), intent(in) :: m ! Just in because we undo the move elsewhere
         integer, intent(in) :: atom
         real, intent(in) :: xx_cur, yy_cur, zz_cur
