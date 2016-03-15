@@ -342,7 +342,6 @@ contains
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                write(*,*) "V(k) = ", Vk
             end do
         endif
 
