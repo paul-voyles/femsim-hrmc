@@ -3,13 +3,6 @@ MODULE hrmc_functions
   use model_mod
   implicit none
 
-  interface
-     function ran2(idum)
-       real :: ran2
-       integer :: idum
-     end function ran2
-  end interface
-
 CONTAINS
 
     function chi_square(alpha,vk_exp, vk_exp_err, vk, scale_fac, nk)
@@ -120,10 +113,10 @@ CONTAINS
 
     iseed = 791315
 
-    rand1 = ran2(iseed)
-    rand2 = ran2(iseed)
-    rand3 = ran2(iseed)
-    rand4 = ran2(iseed)
+    call random_number(rand1)
+    call random_number(rand2)
+    call random_number(rand3)
+    call random_number(rand4)
 
     w = int(m%natoms*rand1)+1
 

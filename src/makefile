@@ -1,7 +1,7 @@
 HRMC = ../hrmc
 FEMSIM = ../femsim
 
-SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem.f90 eam.f90 hrmc.f90
+SRC = globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem.f90 eam.f90 hrmc.f90
 OBJ = $(addsuffix .o, $(basename $(SRC)))
 
 LIBS=

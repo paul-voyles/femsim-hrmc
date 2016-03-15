@@ -111,6 +111,8 @@ program hrmc
     ! Read input parameters
     call read_inputs(param_filename, femsim, model_filename, femfile, Q, ntheta, nphi, npsi, scale_fac_initial, eam_filename, step_start, step_end, temp_move_decrement, temperature, max_move, cutoff_r, seed, alpha, vk_exp, k, vk_exp_err)
 
+    call random_seed(put=(/seed/))
+
     ! Read input model
     call read_model(model_filename, m, istat)
     call check_model(m, istat)
@@ -219,7 +221,7 @@ program hrmc
             te2 = te2/m%natoms
 
             ! Calculate a randnum for accept/reject
-            randnum = ran2(seed)
+            call random_number(randnum)
 
             ! Decide whether to reject just based on the energy.
             ! The fit to V(k) cannot be negative, so there is a lower
@@ -231,6 +233,7 @@ program hrmc
             energy_accepted = .true.
             if(log(1.0-randnum) > -(te2-chi2_old)*beta) then
                 energy_accepted = .false.
+                accepted = .false.
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m, w, xx_cur, yy_cur, zz_cur)
                 e2 = e1
@@ -271,8 +274,8 @@ program hrmc
                 endif
             endif
 
-            ! With the exception of decrement the temperature and max_mvoe, 
-            ! everything after this line is data output to save information to disk
+            ! With the exception of decrement the temperature and max_move,
+            ! everything after this line is data output to save information to disk.
 
             if(myid .eq. 0) then
                 write(*,*) "Finished step", i
@@ -284,9 +287,7 @@ program hrmc
                     ! Update acceptance rate
                     acceptance_array(mod(i,100)+1) = 1
 
-                    if(energy_accepted) then
-                        write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta
-                    else if(del_chi < 0.0) then
+                    if(del_chi < 0.0) then
                         write(*,*) "MC move accepted outright."
                     else
                         write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
@@ -297,6 +298,9 @@ program hrmc
                     write(*,*) "Del-chi = ", del_chi
                     write(*,*) "chi2_old = ", chi2_old
                     write(*,*) "chi2_new = ", chi2_new
+
+                else if(.not. energy_accepted) then
+                    write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta, te2, te1
                 else
                     write(*,*) "MC move rejected."
                     acceptance_array(mod(i,100)+1) = 0

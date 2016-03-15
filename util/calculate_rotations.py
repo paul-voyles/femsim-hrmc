@@ -1,5 +1,13 @@
+"""
+This is a rewrite in python of the rotation calculations in FEMSIM.
+It currently does not correctly reproduce the exact angles of rotation,
+but it should correctly reproduce the number of rotations that will
+be used given nphi, npsi, and ntheta.
+"""
+
 import sys
 import math
+
 
 def calculate_rotations(nphi, npsi, ntheta, verbose=True):
     dphi = 2*math.pi / nphi
