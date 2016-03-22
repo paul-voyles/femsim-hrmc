@@ -939,6 +939,14 @@ contains
                 endif
             enddo
         enddo
+
+        do i=1, m%natoms
+            if (sampled_atoms(i) .ne. 1) then
+                write(0,*) "Error in inputs: At least one atom is not being used or is being used more than once in the intensity call."
+                stop
+            endif
+        enddo
+
         do i=1, ceiling(m%lx)
             buffer = ''
             do j=1, ceiling(m%ly)

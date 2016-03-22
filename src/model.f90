@@ -757,10 +757,10 @@ contains
         ! hutch. The half diagonal of the hutch may be a bit of an
         ! overapprximation, but it isnt much of one.
 
-        x_start = px-diameter/2.0
-        x_end = px+diameter/2.0
-        y_start = py-diameter/2.0
-        y_end = py+diameter/2.0
+        x_start = px-diameter/2.000001
+        x_end = px+diameter/2.000001
+        y_start = py-diameter/2.000001
+        y_end = py+diameter/2.000001
         if(x_start < -m%lx/2.0) x_start = x_start + m%lx !PBC
         if(x_end > m%lx/2.0) x_end = x_end - m%lx !PBC
         if(y_start < -m%ly/2.0) y_start = y_start + m%ly !PBC
@@ -836,10 +836,10 @@ contains
         allocate(temp_atoms(m%natoms), stat=istat)
         call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel')
 
-        x_start = px-diameter/2.0
-        x_end = px+diameter/2.0
-        y_start = py-diameter/2.0
-        y_end = py+diameter/2.0
+        x_start = px-diameter/2.000001
+        x_end = px+diameter/2.000001
+        y_start = py-diameter/2.000001
+        y_end = py+diameter/2.000001
 
         ! Periodic boundary conditions
         if(x_start < -m%lx/2.0) x_start = x_start + m%lx
