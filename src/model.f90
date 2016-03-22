@@ -633,12 +633,12 @@ contains
         allocate(temp_atoms(m%natoms), stat=istat)
         call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel')
 
-        x_start = px-radius
-        x_end = px+radius
-        y_start = py-radius
-        y_end = py+radius
-        z_start = pz-radius
-        z_end = pz+radius
+        x_start = px-radius*0.99999
+        x_end = px+radius*0.99999
+        y_start = py-radius*0.99999
+        y_end = py+radius*0.99999
+        z_start = pz-radius*0.99999
+        z_end = pz+radius*0.99999
 
         ! Periodic boundary conditions
         if(x_start < -m%lx/2.0) x_start = x_start + m%lx
