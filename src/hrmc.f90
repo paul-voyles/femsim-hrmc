@@ -74,12 +74,32 @@ program hrmc
 #endif
 
 #ifndef SERIAL
+    ! Read in this special environemnt variable set by OpenMPI
+    ! Context:  http://stackoverflow.com/questions/35924226/openmpi-mpmd-get-communication-size
+    ! (See the solution by Hristo Iliev)
+    ! The below two lines set `color` to be 0, 1, ..., P where P is the number
+    ! of executables given on the command line within `mpiexec` that are colon-deliminated
+    call get_environment_variable("OMPI_MCA_orte_app_num", color_str)
+    call str2int(color_str, color, istat)
+
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr)
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
+
+    ! Split the world communicator into separate pieces for each mpiexec subprogram
+    call mpi_barrier(mpi_comm_world, mpierr)
+    call mpi_comm_split(mpi_comm_world, color, myid, colored_comm, mpierr)
+
+    ! Get each core's rank within its new communicator
+    call mpi_comm_rank(colored_comm, myid, mpierr)
+    ! Get the total number of cores (ie the sum of all the worlds)
+    call mpi_comm_size(colored_comm, numprocs, mpierr)
+
+    call mpi_barrier(colored_comm, mpierr)
+    write(*,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", colored_comm
 #else
     myid = 0
-    mpi_comm_world = 0
+    colored_comm = 0
     numprocs = 1
 #endif
 
@@ -118,7 +138,7 @@ program hrmc
 
     ! Set input filenames.
 #ifndef SERIAL
-    call mpi_bcast(param_filename, 256, MPI_CHARACTER, 0, mpi_comm_world, mpierr)
+    call mpi_bcast(param_filename, 256, MPI_CHARACTER, 0, colored_comm, mpierr)
 #endif
     if(myid.eq.0) write(*,*) "Paramfile: ", trim(param_filename)
     
@@ -160,7 +180,7 @@ program hrmc
     !------------------- Call femsim. -----------------!
 
     ! Fem updates vk based on the intensity calculations.
-    call fem(m, res, k, vk, scatfact_e, mpi_comm_world, istat)
+    call fem(m, res, k, vk, scatfact_e, colored_comm, istat)
 
     if(myid.eq.0)then
         ! Write initial vk to file
@@ -186,7 +206,7 @@ program hrmc
     !------------------- Start HRMC. -----------------!
 
 #ifndef SERIAL
-    call mpi_barrier(mpi_comm_world, mpierr)
+    call mpi_barrier(colored_comm, mpierr)
 #endif
 
         ! Calculate initial chi2
@@ -257,13 +277,13 @@ program hrmc
             endif
 
             if(energy_accepted) then
-                call fem_update(m, w, res, k, vk, scatfact_e, mpi_comm_world, istat)
+                call fem_update(m, w, res, k, vk, scatfact_e, colored_comm, istat)
 
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
                 chi2_new = chi2_no_energy + te2
                 del_chi = chi2_new - chi2_old
 #ifndef SERIAL
-                call mpi_bcast(del_chi, 1, mpi_double, 0, mpi_comm_world, mpierr)
+                call mpi_bcast(del_chi, 1, mpi_double, 0, colored_comm, mpierr)
 #endif
 
                 ! Test if the move should be accepted or rejected based on del_chi
@@ -424,7 +444,19 @@ program hrmc
 #endif
 
 #ifndef SERIAL
+    ! Free the sub-communicators and finalize
+    call mpi_comm_free(colored_comm, mpierr)
     call mpi_finalize(mpierr)
 #endif
 
 end program hrmc
+
+
+elemental subroutine str2int(str, int, stat)
+    implicit none
+    character(len=*), intent(in) :: str
+    integer, intent(out)         :: int
+    integer, intent(out)         :: stat
+
+    read(str, *, iostat=stat)  int
+end subroutine str2int

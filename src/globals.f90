@@ -7,6 +7,9 @@ MODULE HRMC_Global
   integer, parameter :: ATOMS_PER_HUTCH = 1     ! average number of atoms in a hutch; best performance when this is 1
   real, parameter :: FEM_BIN_WIDTH = 0.005      ! bin width (in angstrom) of the gr_i in fem intensity calculation 
   integer, parameter ::  HRMC_STEPS = 10000     ! # of hrmc steps between model / sim data dumps
-  integer :: myid, numprocs, mpierr             ! mpi variables	
+  ! MPI variables
+  integer :: myid, numprocs, mpierr
+  integer :: color, colored_comm
+  character(len=16) :: color_str
 
 END MODULE HRMC_Global
