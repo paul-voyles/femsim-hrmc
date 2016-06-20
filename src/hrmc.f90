@@ -47,7 +47,7 @@ program hrmc
     character (len=256) :: step_str
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
     double precision :: chi2_prev_step, chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
-    integer :: w, j
+    integer :: atom, j
     real :: randnum
     double precision :: te1, te2
     logical :: accepted, energy_accepted
@@ -228,18 +228,18 @@ program hrmc
             i = i + 1
 
             chi2_prev_step = chi2_old
-            call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
+            call random_move(m, atom, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
             ! check_cutoffs returns false if the new atom placement is too close to
             ! another atom. Returns true if the move is okay. (hard shere cutoff)
-            do while( .not. check_cutoffs(m, cutoff_r, w) )
+            do while( .not. check_cutoffs(m, cutoff_r, atom) )
                 ! check_cutoffs returned false so reset positions and try again.
-                m%xx%ind(w) = xx_cur
-                m%yy%ind(w) = yy_cur
-                m%zz%ind(w) = zz_cur
-                call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
+                m%xx%ind(atom) = xx_cur
+                m%yy%ind(atom) = yy_cur
+                m%zz%ind(atom) = zz_cur
+                call random_move(m, atom, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
             end do
             ! Update hutches with the moved atom position
-            call hutch_move_atom(m, w, xx_new, yy_new, zz_new)
+            call hutch_move_atom(m, atom, xx_new, yy_new, zz_new)
     
             call eam_mc(m, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
             te2 = te2/m%natoms
@@ -258,13 +258,13 @@ program hrmc
             if(log(1.0-randnum) > -(te2-chi2_old)*beta) then
                 energy_accepted = .false.
                 accepted = .false.
-                call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-                call hutch_move_atom(m, w, xx_cur, yy_cur, zz_cur)
+                call reject_position(m, atom, xx_cur, yy_cur, zz_cur)
+                call hutch_move_atom(m, atom, xx_cur, yy_cur, zz_cur)
                 e2 = e1
             endif
 
             if(energy_accepted) then
-                call fem_update(m, w, res, k, vk, scatfact_e, communicator, istat)
+                call fem_update(m, atom, res, k, vk, scatfact_e, communicator, istat)
 
                 chi2_no_energy = chi_square(alpha, vk_exp, vk_exp_err, vk, scale_fac, nk)
                 chi2_new = chi2_no_energy + te2
@@ -291,9 +291,9 @@ program hrmc
                         accepted = .true.
                     else
                         ! Reject move
-                        call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-                        call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)
-                        call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur)
+                        call reject_position(m, atom, xx_cur, yy_cur, zz_cur)
+                        call hutch_move_atom(m,atom,xx_cur, yy_cur, zz_cur)
+                        call fem_reject_move(m, atom, xx_cur, yy_cur, zz_cur)
                         e2 = e1
                         accepted = .false.
                     endif
