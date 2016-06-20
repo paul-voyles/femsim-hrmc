@@ -28,7 +28,7 @@ module fem_mod
     double precision, save, dimension(:,:,:), allocatable :: int_i, int_sq ! nk x npix x nrot.  int_sq == int_i**2
     double precision, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
     double precision, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
-    real, save, allocatable, dimension(:) :: j0, A1                                               
+    double precision, save, allocatable, dimension(:) :: j0, A1                                               
     type(model), save, dimension(:), pointer, public :: mrot  ! array of rotated models
     type(model), save, public :: rot_atom  ! used for rotating a single atom, overwritten every time
     type(index_list), save, dimension(:), pointer :: old_index
@@ -74,17 +74,17 @@ contains
         const3 = (const1/(0.61/res))/const2
         const4 = int(bin_max*const3*CEILING(k(SIZE(k))))+1
 
-        allocate(j0(0:const4),a1(0:const4), stat=istat)
+        allocate(j0(0:const4),A1(0:const4), stat=istat)
         call check_for_error(istat, 'Failed to allocate memory for Bessel and Airy functions.')
 
         ! Initialize bessel functions
         j0=0.0
         do i=1, const4
             b_x = i*fem_bin_width
-            j0(i) = sngl(bessel_j0(b_x))
-            a1(i) = 2*sngl(bessel_j1(b_x))/b_x
+            j0(i) = bessel_j0(b_x)
+            A1(i) = 2*bessel_j1(b_x)/b_x
         enddo
-        a1(0)=1.0
+        A1(0)=1.0
         j0(0)=1.0
 
         nk = nki
@@ -325,6 +325,10 @@ contains
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
             enddo
+            if(i .eq. 37) then
+                write(*,*) "Finished intensity calls on model", i
+                write(*,*) int_sq(1:nk, 1, i)
+            endif
 #ifdef DEBUG
             write(*,*) "Finished intensity calls on model", i
 #endif
@@ -360,16 +364,18 @@ contains
         double precision, dimension(nk), intent(inout) :: int_i
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        real, dimension(:,:,:), allocatable :: gr_i
-        real, dimension(:), allocatable ::x1, y1, rr_a
-        real, dimension(:,:), allocatable :: sum1
-        real :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
+        double precision, dimension(:,:,:), allocatable :: gr_i
+        double precision, dimension(:), allocatable ::x1, y1, rr_a
+        double precision, dimension(:,:), allocatable :: sum1
+        double precision :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
         integer, pointer, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
         integer :: bin_max, size_pix_atoms
-        real, allocatable, dimension(:) :: rr_x, rr_y
-        real :: sqrt1_2_res
-        real :: k_1
+        double precision, allocatable, dimension(:) :: rr_x, rr_y
+        double precision :: sqrt1_2_res
+        double precision :: k_1
+        real :: scatfact_e_ii
+        double precision :: trash
 
         sqrt1_2_res = sqrt(0.5) * res
         r_max = 2*res ! small pixel inscribed in airy circle
@@ -380,15 +386,15 @@ contains
         bin_max = int(r_max/fem_bin_width)+1
 
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
-        allocate(x1(size_pix_atoms),y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
+        allocate(x1(size_pix_atoms), y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
         allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
         allocate(znum_r(size_pix_atoms), stat=istat)
+
+        gr_i = 0.0; int_i = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0; sum1 = 0.0; znum_r = 0.0
 
         do i=1, size_pix_atoms
             znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
         enddo
-
-        gr_i = 0.0; int_i = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
 
         x2 = 0.0; y2 = 0.0
         const1 = twopi*(0.61/res)/fem_bin_width  ! (0.61/res = Q)
@@ -435,17 +441,43 @@ contains
             endif
         enddo
 
+        trash = 0
+        if(m_int%id .eq. 37) then
+            write(*,*) int_i(i)
+            do ii=1,m_int%nelements
+                write(*,*) scatfact_e(ii,1)
+            enddo
+            do jj=1,m_int%nelements
+                write(*,*) scatfact_e(jj,1)
+            enddo
+            write(*,*) k(1)
+        endif
         do i=1,nk
+            trash = int_i(i)
             do j=0,bin_max
+                pp = const3*j*k(i)
+                pp = J0(INT(pp))
                 do ii=1,m_int%nelements
+                    !scatfact_e_ii = scatfact_e(ii,i)
                     do jj=1,m_int%nelements
-                        pp=const3*j*k(i)
-                        int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
+                        !int_i(i) = int_i(i) + scatfact_e_ii * scatfact_e(jj,i) * pp * gr_i(ii,jj,j)
+                        int_i(i) = int_i(i) + scatfact_e(ii, i) * scatfact_e(jj,i) * pp * gr_i(ii,jj,j)
+                        !int_i(i) = int_i(i) + scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(const3*j*k(i)))*gr_i(ii,jj,j)
                     enddo
                 enddo
             end do
+            if(m_int%id .eq. 37) then
+                if(trash .ne. int_i(i)) then
+                    write(*,*) int_i(i)
+                endif
+            endif
         end do
 
+        if(m_int%id .eq. 37) then
+            !write(*,*) sum1!(1, 2)
+            !write(*,*) gr_i(1, 2, :)
+            write(*,*) int_i(1)
+        endif
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
         if(size(pix_atoms).gt.0) deallocate(pix_atoms)
@@ -741,6 +773,12 @@ contains
                     int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
+            !if(i .eq. 37) then
+            !    write(*,*) "Finished intensity calls on model", i
+            !    !write(*,*) int_sq(1:nk, 1, i)
+            !    write(*,*) int_sq(1, 1, i)
+            !    !write(*,*) mrot(i)%xx%ind(mrot(i)%rot_i(163)%ind(1)), mrot(i)%yy%ind(mrot(i)%rot_i(163)%ind(1)), mrot(i)%zz%ind(mrot(i)%rot_i(163)%ind(1))
+            !endif
         enddo
 #ifdef DEBUG
         write(*,*) "I am core", myid, "and I am past the int calls."
