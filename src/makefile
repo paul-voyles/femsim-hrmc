@@ -20,7 +20,7 @@ endif
 
 # Set FCFLAGS for debugging if 'debug' is in targets, otherwise set normally
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-FCFLAGS += -g -debug all -check all -implicitnone -warn all -openmp -fpp -DDEBUG
+FCFLAGS += -g -debug all -check all -implicitnone -warn all -openmp -fpp -DDEBUG -traceback
 MAKECMDGOALS := $(filter-out debug,$(MAKECMDGOALS))
 $(info Making debug version of $(MAKECMDGOALS)...)
 else
