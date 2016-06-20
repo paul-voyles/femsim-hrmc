@@ -325,10 +325,6 @@ contains
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
             enddo
-            if(i .eq. 37) then
-                write(*,*) "Finished intensity calls on model", i
-                write(*,*) int_sq(1:nk, 1, i)
-            endif
 #ifdef DEBUG
             write(*,*) "Finished intensity calls on model", i
 #endif
@@ -375,7 +371,6 @@ contains
         double precision :: sqrt1_2_res
         double precision :: k_1
         real :: scatfact_e_ii
-        double precision :: trash
 
         sqrt1_2_res = sqrt(0.5) * res
         r_max = 2*res ! small pixel inscribed in airy circle
@@ -386,7 +381,7 @@ contains
         bin_max = int(r_max/fem_bin_width)+1
 
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
-        allocate(x1(size_pix_atoms), y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
+        allocate(x1(size_pix_atoms), y1(size_pix_atoms), rr_a(size_pix_atoms), stat=istat)
         allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
         allocate(znum_r(size_pix_atoms), stat=istat)
 
@@ -441,19 +436,7 @@ contains
             endif
         enddo
 
-        trash = 0
-        if(m_int%id .eq. 37) then
-            write(*,*) int_i(i)
-            do ii=1,m_int%nelements
-                write(*,*) scatfact_e(ii,1)
-            enddo
-            do jj=1,m_int%nelements
-                write(*,*) scatfact_e(jj,1)
-            enddo
-            write(*,*) k(1)
-        endif
         do i=1,nk
-            trash = int_i(i)
             do j=0,bin_max
                 pp = const3*j*k(i)
                 pp = J0(INT(pp))
@@ -466,18 +449,8 @@ contains
                     enddo
                 enddo
             end do
-            if(m_int%id .eq. 37) then
-                if(trash .ne. int_i(i)) then
-                    write(*,*) int_i(i)
-                endif
-            endif
         end do
 
-        if(m_int%id .eq. 37) then
-            !write(*,*) sum1!(1, 2)
-            !write(*,*) gr_i(1, 2, :)
-            write(*,*) int_i(1)
-        endif
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
         if(size(pix_atoms).gt.0) deallocate(pix_atoms)
@@ -773,12 +746,6 @@ contains
                     int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
-            !if(i .eq. 37) then
-            !    write(*,*) "Finished intensity calls on model", i
-            !    !write(*,*) int_sq(1:nk, 1, i)
-            !    write(*,*) int_sq(1, 1, i)
-            !    !write(*,*) mrot(i)%xx%ind(mrot(i)%rot_i(163)%ind(1)), mrot(i)%yy%ind(mrot(i)%rot_i(163)%ind(1)), mrot(i)%zz%ind(mrot(i)%rot_i(163)%ind(1))
-            !endif
         enddo
 #ifdef DEBUG
         write(*,*) "I am core", myid, "and I am past the int calls."

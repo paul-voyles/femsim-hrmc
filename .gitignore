@@ -3,3 +3,7 @@
 femsim
 hrmc
 src/ran2__genmod.f90
+model_update*.xyz
+acceptance_rate*.txt
+chi_squared*.txt
+vk_initial*.txt

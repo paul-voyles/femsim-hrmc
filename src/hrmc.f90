@@ -46,7 +46,7 @@ program hrmc
     character (len=256) :: output_model_fn
     character (len=256) :: step_str
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
-    double precision :: chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
+    double precision :: chi2_prev_step, chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
     integer :: w, j
     real :: randnum
     double precision :: te1, te2
@@ -209,8 +209,9 @@ program hrmc
             write(*,*) "   Decrement # =      ", temp_move_decrement
             write(*,*) "   Energy =           ", te1
             write(*,*) "   LSqF V(k) =        ", chi2_no_energy
+            write(*,*) "   Cost Function =    ", chi2_old
             write(*,*) "   Temperature =      ", temperature
-            write(*,*) "   Max Move=          ", max_move
+            write(*,*) "   Max Move =         ", max_move
             write(*,*)
             ! Reset energy/chi_squared and acceptance rate files
             open(36,file=trim(chi_squared_file), form='formatted', status='unknown')
@@ -226,10 +227,11 @@ program hrmc
         do while (i .le. step_end)
             i = i + 1
 
+            chi2_prev_step = chi2_old
             call random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
             ! check_cutoffs returns false if the new atom placement is too close to
             ! another atom. Returns true if the move is okay. (hard shere cutoff)
-            do while( .not. check_cutoffs(m,cutoff_r,w) )
+            do while( .not. check_cutoffs(m, cutoff_r, w) )
                 ! check_cutoffs returned false so reset positions and try again.
                 m%xx%ind(w) = xx_cur
                 m%yy%ind(w) = yy_cur
@@ -320,7 +322,7 @@ program hrmc
                     write(*,*) "Energy = ", te2
                     write(*,*) "Del-V(k) = ", chi2_no_energy
                     write(*,*) "Del-chi = ", del_chi
-                    write(*,*) "chi2_old = ", chi2_old
+                    write(*,*) "chi2_prev_step = ", chi2_prev_step
                     write(*,*) "chi2_new = ", chi2_new
 
                 else if(.not. energy_accepted) then
