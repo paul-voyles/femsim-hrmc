@@ -16,8 +16,7 @@ contains
         real, intent(out), dimension(:,:), allocatable :: cutoff_r
         integer, intent(out) :: iseed2
         real, intent(out) :: alpha
-        real, pointer, dimension(:) :: k
-        double precision, pointer, dimension(:) :: v, v_err
+        double precision, pointer, dimension(:) :: k, v, v_err
         integer, intent(out) :: ntheta, nphi, npsi
         real, intent(out) :: q
         real, intent(out) :: scale_fac
@@ -44,9 +43,9 @@ contains
         read(line, *) q
         read(20, '(A)') line; if(index(line, "#") .ne. 0) then; line = line(1:index(line, "#")-1); line = adjustl(line); endif
         read(line, *) nphi, npsi, ntheta
+        if(.not. femsim) then
         read(20, '(A)') line; if(index(line, "#") .ne. 0) then; line = line(1:index(line, "#")-1); line = adjustl(line); endif
         read(line, *) scale_fac
-        if(.not. femsim) then
             read(20, '(A256)') eam_file; eam_file= adjustl(eam_file)
             read(20, '(A)') line
             read(line, *) step_start, step_end

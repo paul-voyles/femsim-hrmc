@@ -1,8 +1,8 @@
 MODULE scattering_factors
 
-REAL, PRIVATE, DIMENSION(103,3) :: a_e, b_e, c_e,d_e
-REAL, PRIVATE, DIMENSION(98,4) :: a_x, b_x
-REAL, PRIVATE, DIMENSION(98) :: c_x
+DOUBLE PRECISION, PRIVATE, DIMENSION(103,3) :: a_e, b_e, c_e,d_e
+DOUBLE PRECISION, PRIVATE, DIMENSION(98,4) :: a_x, b_x
+DOUBLE PRECISION, PRIVATE, DIMENSION(98) :: c_x
 
 
 CONTAINS
@@ -1257,9 +1257,9 @@ FUNCTION f_e(Z,k)
     ! Three sets of a,b,c and d are provided
     
     IMPLICIT NONE
-    REAL :: f_e
+    DOUBLE PRECISION :: f_e
     INTEGER :: Z
-    REAL :: k
+    DOUBLE PRECISION :: k
     INTEGER :: i
     
     f_e = 0.0
@@ -1273,8 +1273,8 @@ END FUNCTION f_e
 SUBROUTINE f_e_cal(number_elements, element_list, k_list, f_e_list)
     INTEGER, INTENT(in) :: number_elements
     INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list !increasing order
-    REAL, INTENT(in), DIMENSION(:) :: k_list
-    REAL, INTENT(out), DIMENSION(:,:) ::f_e_list
+    DOUBLE PRECISION, INTENT(in), DIMENSION(:) :: k_list
+    DOUBLE PRECISION, INTENT(out), DIMENSION(:,:) ::f_e_list
     INTEGER :: i, j
     INTEGER :: number_k
 
@@ -2181,9 +2181,9 @@ END SUBROUTINE read_f_x
 ! for element Z at scattering vector k
 FUNCTION f_x(Z,k)
     IMPLICIT NONE
-    REAL :: f_x
+    DOUBLE PRECISION :: f_x
     INTEGER :: Z
-    REAL :: k
+    DOUBLE PRECISION :: k
     INTEGER :: i
 
     f_x = 0.0
@@ -2199,8 +2199,8 @@ END FUNCTION f_x
 SUBROUTINE f_x_cal(number_elements, element_list, k_list, f_x_list)
     INTEGER, INTENT(in) :: number_elements
     INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list
-    REAL, INTENT(in), DIMENSION(:) :: k_list
-    REAL, INTENT(out), DIMENSION(:,:) ::f_x_list
+    DOUBLE PRECISION, INTENT(in), DIMENSION(:) :: k_list
+    DOUBLE PRECISION, INTENT(out), DIMENSION(:,:) ::f_x_list
     INTEGER :: i, j
     INTEGER :: number_k
 
