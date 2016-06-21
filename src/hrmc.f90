@@ -26,10 +26,9 @@ program hrmc
     real :: temperature
     real :: max_move
     real :: Q, res, alpha
-    real, pointer, dimension(:) :: k
-    double precision, pointer, dimension(:) :: vk, vk_exp, vk_exp_err
+    double precision, pointer, dimension(:) :: k, vk, vk_exp, vk_exp_err
     real, allocatable, dimension(:,:) :: cutoff_r 
-    real, pointer, dimension(:,:) :: scatfact_e
+    double precision, pointer, dimension(:,:) :: scatfact_e
     real :: scale_fac, scale_fac_initial, beta, boltzmann
     integer :: i
     integer :: nk

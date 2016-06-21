@@ -56,9 +56,9 @@ contains
     subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat)
         type(model), intent(in) :: m 
         real, intent(in) :: res
-        real, dimension(:), intent(in) :: k 
+        double precision, dimension(:), intent(in) :: k 
         integer, intent(in) :: nki, ntheta, nphi, npsi 
-        real, dimension(:,:), pointer :: scatfact_e
+        double precision, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         real r_max, const1, const2, const3
         integer bin_max
@@ -261,9 +261,9 @@ contains
         implicit none
         type(model), intent(in) :: m
         real, intent(in) :: res
-        real, dimension(:), intent(in) :: k
+        double precision, dimension(:), intent(in) :: k
         double precision, dimension(:), INTENT(OUT) :: vk
-        real, dimension(:,:), pointer :: scatfact_e
+        double precision, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         integer, optional, intent(in) :: rot_begin, rot_end
         double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
@@ -356,9 +356,9 @@ contains
 #endif
         type(model), intent(inout) :: m_int
         real, intent(in) :: res, px, py
-        real, dimension(nk), intent(in) :: k
+        double precision, dimension(nk), intent(in) :: k
         double precision, dimension(nk), intent(inout) :: int_i
-        real, dimension(:,:), pointer :: scatfact_e
+        double precision, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         double precision, dimension(:,:,:), allocatable :: gr_i
         double precision, dimension(:), allocatable ::x1, y1, rr_a
@@ -370,7 +370,7 @@ contains
         double precision, allocatable, dimension(:) :: rr_x, rr_y
         double precision :: sqrt1_2_res
         double precision :: k_1
-        real :: scatfact_e_ii
+        double precision :: scatfact_e_ii
 
         sqrt1_2_res = sqrt(0.5) * res
         r_max = 2*res ! small pixel inscribed in airy circle
@@ -441,11 +441,9 @@ contains
                 pp = const3*j*k(i)
                 pp = J0(INT(pp))
                 do ii=1,m_int%nelements
-                    !scatfact_e_ii = scatfact_e(ii,i)
+                    scatfact_e_ii = scatfact_e(ii,i)
                     do jj=1,m_int%nelements
-                        !int_i(i) = int_i(i) + scatfact_e_ii * scatfact_e(jj,i) * pp * gr_i(ii,jj,j)
-                        int_i(i) = int_i(i) + scatfact_e(ii, i) * scatfact_e(jj,i) * pp * gr_i(ii,jj,j)
-                        !int_i(i) = int_i(i) + scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(const3*j*k(i)))*gr_i(ii,jj,j)
+                        int_i(i) = int_i(i) + scatfact_e_ii * scatfact_e(jj,i) * pp * gr_i(ii,jj,j)
                     enddo
                 enddo
             end do
@@ -571,9 +569,9 @@ contains
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
         real, intent(in) :: res
-        real, dimension(:), intent(in) :: k
+        double precision, dimension(:), intent(in) :: k
         double precision, dimension(:), intent(out) :: vk
-        real, dimension(:,:), pointer :: scatfact_e
+        double precision, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         double precision, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq
         integer :: comm
