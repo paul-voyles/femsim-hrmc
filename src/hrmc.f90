@@ -73,12 +73,26 @@ program hrmc
 #endif
 
 #ifndef SERIAL
+    ! Read in this special environemnt variable set by OpenMPI
+    ! Context: http://stackoverflow.com/questions/35924226/openmpi-mpmd-get-communication-size
+    ! (See the solution by Hristo Iliev)
+    ! The below two lines set `color` to be 0, 1, ..., P where P is the number
+    ! of executables given on the command line within `mpiexec` that are colon-deliminated
+    call get_environment_variable("OMPI_MCA_orte_app_num", color_str)
+    call str2int(color_str, color, istat)
+
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr)
-    write(*,*) "Successfully initialized MPI"
-    communicator = mpi_comm_world
+    write(*,*) "Successfully initialized MPI_COMM_WORLD"
+    ! Split the world communicator into separate pieces for each mpiexec subprogram / spawn multiple
+    call mpi_barrier(mpi_comm_world, mpierr)
+    call mpi_comm_split(mpi_comm_world, color, myid, communicator, mpierr)
+
+    ! Get each core's rank within its new communicator
     call mpi_comm_rank(communicator, myid, mpierr)
     call mpi_comm_size(communicator, numprocs, mpierr)
-    write(*,*) "I am rank", myid, "of", numprocs
+    call get_environment_variable("OMPI_MCA_orte_app_num", color_str)
+    write(*,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
+
 
     call mpi_barrier(communicator, mpierr)
 #else
@@ -429,7 +443,6 @@ program hrmc
         endif
 #endif
 
-#ifndef SERIAL
     ! Free the sub-communicators and finalize
     call mpi_comm_get_parent(communicator, mpierr)
     if(communicator .ne. mpi_comm_null) then
@@ -437,7 +450,16 @@ program hrmc
         write(*,*) "Disconnected from parent!"
     endif
     call mpi_finalize(mpierr)
-#endif
 
+    write(*,*) "Successfully finished FEMSIM"
 end program hrmc
 
+
+elemental subroutine str2int(str, int, stat)
+    implicit none
+    character(len=*), intent(in) :: str
+    integer, intent(out)         :: int
+    integer, intent(out)         :: stat
+
+    read(str, *, iostat=stat)  int
+end subroutine str2int
