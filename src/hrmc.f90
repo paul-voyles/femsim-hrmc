@@ -237,6 +237,7 @@ program hrmc
 
         ! HRMC loop begins.
         te2 = te1
+        e2 = e1
         do while (i .le. step_end)
             i = i + 1
 
