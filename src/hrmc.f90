@@ -259,6 +259,7 @@ program hrmc
 
             ! Calculate a randnum for accept/reject
             call random_number(randnum)
+            randnum = 1.0-randnum
 
             ! Decide whether to reject just based on the energy.
             ! The fit to V(k) cannot be negative, so there is a lower
@@ -268,7 +269,7 @@ program hrmc
             ! to be accepted.
             ! This can save an entire call to fem_update.
             energy_accepted = .true.
-            if(log(1.0-randnum) > -(te2-chi2_old)*beta) then
+            if(log(randnum) > -(te2-chi2_old)*beta) then
                 energy_accepted = .false.
                 accepted = .false.
                 call reject_position(m, atom, xx_cur, yy_cur, zz_cur)
@@ -276,6 +277,7 @@ program hrmc
                 e2 = e1
             endif
 
+            ! If the energy is good enough, run FEMSIM and re-evaluate the acceptance
             if(energy_accepted) then
                 call fem_update(m, atom, res, k, vk, scatfact_e, communicator, istat)
 
@@ -296,7 +298,7 @@ program hrmc
                 else
                     ! Based on the random number above, even if del_chi is negative, decide
                     ! whether to accept or not.
-                    if(log(1.0-randnum) < -del_chi*beta) then
+                    if(log(randnum) < -del_chi*beta) then
                         ! Accept move
                         call fem_accept_move()
                         e1 = e2 ! eam
