@@ -82,7 +82,6 @@ program hrmc
     call str2int(color_str, color, istat)
 
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr)
-    write(*,*) "Successfully initialized MPI_COMM_WORLD"
     ! Split the world communicator into separate pieces for each mpiexec subprogram / spawn multiple
     call mpi_barrier(mpi_comm_world, mpierr)
     call mpi_comm_split(mpi_comm_world, color, myid, communicator, mpierr)
@@ -91,6 +90,7 @@ program hrmc
     call mpi_comm_rank(communicator, myid, mpierr)
     call mpi_comm_size(communicator, numprocs, mpierr)
     call get_environment_variable("OMPI_MCA_orte_app_num", color_str)
+    if(myid .eq. 0) write(*,*) "Successfully initialized MPI_COMM_WORLD"
     write(*,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
 
 
@@ -240,6 +240,7 @@ program hrmc
         e2 = e1
         do while (i .le. step_end)
             i = i + 1
+            if(myid .eq. 0) write(*,*) "Starting step", i
 
             chi2_prev_step = chi2_old
             call random_move(m, atom, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
@@ -320,8 +321,6 @@ program hrmc
             ! everything after this line is data output to save information to disk.
 
             if(myid .eq. 0) then
-                write(*,*) "Finished step", i
-
                 if(accepted) then
                     ! Write chi2 and energy info
                     write(36,*) i, chi2_no_energy, te2
@@ -342,7 +341,7 @@ program hrmc
                     write(*,*) "chi2_new = ", chi2_new
 
                 else if(.not. energy_accepted) then
-                    write(*,*) "MC move rejected solely due to energy.", -(te2-chi2_old)*beta, te2, te1
+                    write(*,*) "MC move rejected solely due to energy.", te2
                 else
                     write(*,*) "MC move rejected.", chi2_old, chi2_new
                     acceptance_array(mod(i,100)+1) = 0

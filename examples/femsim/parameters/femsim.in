@@ -3,4 +3,3 @@ examples/femsim/models/Zr50Cu35Al15_t3_final.xyz  # Model file
 data/fem_exp_Zr50Cu35Al15_t3.txt                  # Experimental data file
 0.0305                                            # Q (inverse angstrom) = 0.61 / R
 1 40 20                                           # number of rotations(nphi, npsi, ntheta), use 1 40 20
-28.6378                                           # thickness scaling factor = 3 texp/tsim

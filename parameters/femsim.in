@@ -1,5 +1,0 @@
-# An example parameter file for FEMSIM
-models/Zr50Cu35Al15_start.xyz                # Model file
-data/fem_exp_Zr50Cu35Al15_t3.txt             # Experimental data file
-0.0305                                       # Q (inverse angstrom) = 0.61 / R
-1 40 20                                      # number of rotations(nphi, npsi, ntheta), use 1 40 20
