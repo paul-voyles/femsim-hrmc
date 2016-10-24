@@ -135,7 +135,12 @@ contains
         sep = .true.
         nums = 0
         do i = 1, len(str)
-            if ( (ichar(str(i:i)) .ge. 48 .and. ichar(str(i:i)) .le. 57) .or.  ichar(str(i:i)) .eq. 46 ) then ! we have a number or a .
+            if ( (ichar(str(i:i)) .ge. 48 .and. ichar(str(i:i)) .le. 57) .or. \
+                  ichar(str(i:i)) .eq. 46 .or. \
+                  ichar(str(i:i)) .eq. 45 .or. \
+                  ichar(str(i:i)) .eq. 69 .or. \
+                  ichar(str(i:i)) .eq. 101 \
+                ) then ! we have a number, a period, a negative sign, or a E or e for exponential format
                 if(sep) nums = nums + 1
                 sep = .false.
             else
