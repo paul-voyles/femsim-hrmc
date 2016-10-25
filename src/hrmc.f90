@@ -25,11 +25,11 @@ program hrmc
     character (len=256) :: paramfile_restart
     real :: temperature
     real :: max_move
-    real :: Q, res, alpha
+    double precision :: Q, res, alpha
     double precision, pointer, dimension(:) :: k, vk, vk_exp, vk_exp_err
-    real, allocatable, dimension(:,:) :: cutoff_r 
+    double precision, allocatable, dimension(:,:) :: cutoff_r 
     double precision, pointer, dimension(:,:) :: scatfact_e
-    real :: scale_fac, scale_fac_initial, beta, boltzmann
+    double precision :: scale_fac, scale_fac_initial, beta, boltzmann
     integer :: i
     integer :: nk
     integer :: ntheta, nphi, npsi
@@ -44,10 +44,10 @@ program hrmc
     ! HRMC variables
     character (len=256) :: output_model_fn
     character (len=256) :: step_str
-    real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
+    double precision :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
     double precision :: chi2_prev_step, chi2_old, chi2_new, del_chi, chi2_no_energy, chi2_initial
     integer :: atom, j
-    real :: randnum
+    double precision :: randnum
     double precision :: te1, te2
     logical :: accepted, energy_accepted
     integer, dimension(100) :: acceptance_array
@@ -148,7 +148,7 @@ program hrmc
     ! Read input model
     call read_model(model_filename, m, istat)
     call check_model(m, istat)
-    call recenter_model(0.0, 0.0, 0.0, m)
+    call recenter_model(dble(0.0), dble(0.0), dble(0.0), m)
 
     if(myid .eq. 0) then
     write(*,*) "Model filename: ", trim(model_filename)

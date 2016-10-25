@@ -6,10 +6,10 @@ MODULE hrmc_functions
 CONTAINS
 
     function chi_square(alpha,vk_exp, vk_exp_err, vk, scale_fac, nk)
-        real :: alpha
+        double precision :: alpha
         double precision, pointer, dimension(:) :: vk_exp, vk_exp_err
         double precision, pointer, dimension(:) :: vk
-        real, intent(in) :: scale_fac
+        double precision, intent(in) :: scale_fac
         integer, intent(in) ::nk
         integer j
         integer nf   ! normalization factor
@@ -29,16 +29,16 @@ CONTAINS
     ! Otherwise returns .false.
     function check_cutoffs(m,cutoff_r,moved_atom)
         logical check_cutoffs
-        real,dimension(:,:) ::cutoff_r
+        double precision,dimension(:,:) ::cutoff_r
         integer moved_atom
         type(model) m
         integer, dimension(:), pointer :: atoms
         integer  nlist
         integer istat
-        real radius, temp_x, temp_y, temp_z
+        double precision radius, temp_x, temp_y, temp_z
         integer i,j
         integer num1, num2
-        real dist_pair
+        double precision dist_pair
 
         ! Find the maximum cut-off distance
         radius = maxval(maxval(cutoff_r, 1),1)
@@ -102,12 +102,14 @@ CONTAINS
 
   ! Generates a random move of one atom.
   ! The actual positions are not changed, just returned.
-  subroutine random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, alpha)
+  subroutine random_move(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, alpha)
     type(model), intent(inout) :: m
-    integer iseed, w
-    real alpha, aa, bb, cc
-    real, intent(out) :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
-    real :: rand1, rand2, rand3, rand4
+    integer, intent(out) :: w
+    double precision, intent(out) :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
+    real, intent(in) :: alpha
+    integer :: iseed
+    double precision :: rand1, rand2, rand3, rand4
+    double precision :: aa, bb, cc
 
 
     iseed = 791315

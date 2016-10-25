@@ -17,7 +17,7 @@ module model_mod
         ! number of hutches in x, y, and z
         integer :: nhutch_x, nhutch_y, nhutch_z
         ! physical size of a hutch in Angstroms
-        real :: hutch_size
+        double precision :: hutch_size
         ! list of the hutch indices for every atom
         integer, pointer, dimension(:,:) :: atom_hutch
     end type hutch_array
@@ -28,10 +28,10 @@ module model_mod
         integer, allocatable, dimension(:) :: ind
     end type index_list
 
-    type real_index_list
+    type dble_index_list
         integer :: nat
-        real, allocatable, dimension(:) :: ind
-    end type real_index_list
+        double precision, allocatable, dimension(:) :: ind
+    end type dble_index_list
 
 
     ! Defined type for a structural model with atoms positions and a bunch of metadata
@@ -40,8 +40,8 @@ module model_mod
         integer :: natoms  ! number of atoms in the model
         logical :: rotated  ! TRUE if model has been rotated, FALSE otherwise
         integer :: unrot_natoms  ! # of atoms in the unrotated model (can be different than natoms)
-        real :: lx, ly, lz  ! box size, in Angstroms
-        type(real_index_list) :: xx, yy, zz  ! atom positions in Angstroms
+        double precision :: lx, ly, lz  ! box size, in Angstroms
+        type(dble_index_list) :: xx, yy, zz  ! atom positions in Angstroms
         type(index_list) :: znum, znum_r  ! atom atomic numbers, and reduced z numbners
         integer :: nelements ! # of elements in the model
         integer, allocatable, dimension(:) :: atom_type ! array listing atomic numbers present
@@ -69,7 +69,6 @@ contains
         integer, intent(out) :: istat      !0 for successful open, others for failure.
         integer :: i, j, atom_temp
         integer, dimension(103) :: elements=0
-        real :: comp_temp
         character(3) :: sym
         character(3), dimension(118) :: syms
 
@@ -186,9 +185,9 @@ contains
     ! Shifts the atom positions in model m so that the mid-point between the maximum and
     ! and minimum atom positions in each dimensions sits at the position (xc, yc, zc),
     ! measured in units of the model supercell.
-        real, intent(in) :: xc, yc, zc
+        double precision, intent(in) :: xc, yc, zc
         type(model), intent(inout) :: m
-        real :: xshift, yshift, zshift
+        double precision :: xshift, yshift, zshift
         xshift = xc*m%lx - (maxval(m%xx%ind(1:m%natoms)) + minval(m%xx%ind(1:m%natoms)))/2.0
         yshift = yc*m%ly - (maxval(m%yy%ind(1:m%natoms)) + minval(m%yy%ind(1:m%natoms)))/2.0
         zshift = zc*m%lz - (maxval(m%zz%ind(1:m%natoms)) + minval(m%zz%ind(1:m%natoms)))/2.0
@@ -206,7 +205,7 @@ contains
     ! Never called within HRMC.
         type(model), intent(in) :: m 
         integer, intent(out) :: istat
-        real xlen, ylen, zlen 
+        double precision xlen, ylen, zlen 
         istat = 0
 
         xlen = maxval(m%xx%ind(1:m%natoms)) - minval(m%xx%ind(1:m%natoms))
@@ -242,15 +241,15 @@ contains
     subroutine rotate_atom(phi, psi, theta, min, mrot, istat)
         ! Rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
         ! min should be a single atom model.
-        real, intent(in) :: theta, phi, psi
+        double precision, intent(in) :: theta, phi, psi
         type(model), intent(in) :: min
         type(model), intent(inout) :: mrot 
         integer, intent(out) :: istat
-        real, dimension(3,3) :: r                         ! rotation matrix
-        real :: cpsi, cphi, ctheta, sphi, spsi, stheta    ! sines and cosines of the angles
+        double precision, dimension(3,3) :: r                         ! rotation matrix
+        double precision :: cpsi, cphi, ctheta, sphi, spsi, stheta    ! sines and cosines of the angles
         integer :: i, j                                   ! loop counters
-        real :: x, y, z                                   ! temporary positions
-        real :: lx2, ly2, lz2                             ! half box sizes
+        double precision :: x, y, z                                   ! temporary positions
+        double precision :: lx2, ly2, lz2                             ! half box sizes
         type(model) :: mt                                 ! temporary oversize model
         
         ! periodic continue mt to 3x3x3 of the original model
@@ -340,15 +339,15 @@ contains
 
     subroutine rotate_model(phi, psi, theta, min, mrot, istat)
         ! Rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
-        real, intent(in) :: theta, phi, psi
+        double precision, intent(in) :: theta, phi, psi
         type(model), intent(in) :: min
         type(model), intent(out) :: mrot 
         integer, intent(out) :: istat
-        real, dimension(3,3) :: r                         ! rotation matrix
-        real :: cpsi, cphi, ctheta, sphi, spsi, stheta    ! sines and cosines of the angles
+        double precision, dimension(3,3) :: r                         ! rotation matrix
+        double precision :: cpsi, cphi, ctheta, sphi, spsi, stheta    ! sines and cosines of the angles
         integer :: i, j                                   ! loop counters
-        real :: x, y, z                                   ! temporary positions
-        real :: lx2, ly2, lz2                             ! half box sizes
+        double precision :: x, y, z                                   ! temporary positions
+        double precision :: lx2, ly2, lz2                             ! half box sizes
         type(model) :: mt                                 ! temporary oversize model
         integer, dimension(:), allocatable :: orig_indices
         
@@ -533,7 +532,7 @@ contains
     ! extends from -lx/2 to lx/2, -ly/2 to ly/2 and -lz/2 to lz/2 and does no
     ! error checking.
         type(model), intent(in) :: m 
-        real, intent(in) :: xx, yy, zz
+        double precision, intent(in) :: xx, yy, zz
         integer, intent(out) :: hx, hy, hz
 
         ! This makes the range of hx, hy, and hz from 0 to nhutch_i, however
@@ -563,7 +562,7 @@ contains
         logical, intent(in) :: init_hutch
         integer, intent(out) :: istat
         integer :: i, j, k, c
-        real :: shift_x, shift_y, shift_z
+        double precision :: shift_x, shift_y, shift_z
 
         mout%natoms = min%natoms*xp*yp*zp
         allocate(mout%xx%ind(mout%natoms), mout%yy%ind(mout%natoms), mout%zz%ind(mout%natoms), &
@@ -575,17 +574,17 @@ contains
         mout%znum_r%nat = mout%natoms
         call check_for_error(istat, 'Error allocating memory for the periodic continued model.')
 
-        mout%lx = min%lx*real(xp)
-        mout%ly = min%ly*real(yp)
-        mout%lz = min%lz*real(zp)
+        mout%lx = min%lx*dble(xp)
+        mout%ly = min%ly*dble(yp)
+        mout%lz = min%lz*dble(zp)
 
         c=0
         do i = -(xp-1)/2, (xp-1)/2
-            shift_x = real(i)*min%lx
+            shift_x = dble(i)*min%lx
             do j = -(yp-1)/2, (yp-1)/2
-                shift_y = real(j)*min%ly
+                shift_y = dble(j)*min%ly
                 do k = -(zp-1)/2, (zp-1)/2
-                    shift_z = real(k)*min%lz
+                    shift_z = dble(k)*min%lz
                     mout%xx%ind(c*min%natoms+1:(c+1)*min%natoms) = min%xx%ind + shift_x
                     mout%yy%ind(c*min%natoms+1:(c+1)*min%natoms) = min%yy%ind + shift_y
                     mout%zz%ind(c*min%natoms+1:(c+1)*min%natoms) = min%zz%ind + shift_z
@@ -615,7 +614,8 @@ contains
     ! Returns 1 in istat if memory allocation fails and -1 if no atoms are found.
 
         type(model), target, intent(in) :: m
-        real, intent(in) :: px, py, pz, radius
+        double precision, intent(in) :: px, py, pz
+        double precision, intent(in) :: radius
         integer, pointer, dimension(:) :: atoms
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
@@ -623,10 +623,10 @@ contains
         integer :: nlist        ! number of atoms in list
         integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
-        real, dimension(3) :: hcenter
-        real :: dist2, distx, disty, distz
+        double precision, dimension(3) :: hcenter
+        double precision :: dist2, distx, disty, distz
         integer :: i_start, i_end, j_start, j_end, k_start, k_end
-        real :: x_start, x_end, y_start, y_end, z_start, z_end
+        double precision :: x_start, x_end, y_start, y_end, z_start, z_end
 
         ! Allocatae temp_atoms with the max number of atoms so that no matter
         ! how many we find, there will always be enough room.
@@ -722,7 +722,7 @@ contains
     ! prism with side length diameter in x and y, through the model thickness
     ! in z, centered on the hutch containing the point (px, py).
         type(model), target, intent(in) :: m
-        real, intent(in) :: px, py, diameter
+        double precision, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
@@ -730,10 +730,10 @@ contains
         integer :: nlist        ! number of atoms in list
         integer :: i, j, k  ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
-        real, dimension(3) :: hcenter
-        real :: dist
+        double precision, dimension(3) :: hcenter
+        double precision :: dist
         integer :: i_start, i_end, j_start, j_end, trash
-        real :: x_start, x_end, y_start, y_end
+        double precision :: x_start, x_end, y_start, y_end
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
@@ -765,8 +765,8 @@ contains
         if(x_end > m%lx/2.0) x_end = x_end - m%lx !PBC
         if(y_start < -m%ly/2.0) y_start = y_start + m%ly !PBC
         if(y_end > m%ly/2.0) y_end = y_end - m%ly !PBC
-        call hutch_position(m, x_start, y_start, 0.0, i_start, j_start, trash)
-        call hutch_position(m, x_end, y_end, 0.0, i_end, j_end, trash)
+        call hutch_position(m, x_start, y_start, dble(0.0), i_start, j_start, trash)
+        call hutch_position(m, x_end, y_end, dble(0.0), i_end, j_end, trash)
 
         nh = 0
         nlist = 1
@@ -820,7 +820,7 @@ contains
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
         type(model), target, intent(in) :: m
-        real, intent(in) :: px, py, diameter
+        double precision, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms !output of atom indices
         integer, intent(out) :: istat
         integer :: nh           ! number of hutches corresponding to diameter
@@ -828,7 +828,7 @@ contains
         integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
         integer :: i_start, i_end, j_start, j_end, trash
-        real :: x_start, x_end, y_start, y_end
+        double precision :: x_start, x_end, y_start, y_end
 
 #ifdef DEBUG
         write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
@@ -847,8 +847,8 @@ contains
         if(y_start < -m%ly/2.0) y_start = y_start + m%ly
         if(y_end > m%ly/2.0) y_end = y_end - m%ly
 
-        call hutch_position(m, x_start, y_start, 0.0, i_start, j_start, trash)
-        call hutch_position(m, x_end, y_end, 0.0, i_end, j_end, trash)
+        call hutch_position(m, x_start, y_start, dble(0.0), i_start, j_start, trash)
+        call hutch_position(m, x_end, y_end, dble(0.0), i_end, j_end, trash)
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
         
         ! Fill in the list.
@@ -894,7 +894,7 @@ contains
     ! hutch_array for a Monte Carlo move of one atom.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom
-        real, intent(in) :: xx, yy, zz
+        double precision, intent(in) :: xx, yy, zz
         integer :: hx, hy, hz
         call hutch_remove_atom(m, atom)
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
@@ -1008,7 +1008,7 @@ contains
     subroutine move_atom(m, atom, xx, yy, zz)
         type(model), intent(inout) :: m
         integer, intent(in) :: atom
-        real, intent(in) :: xx, yy, zz
+        double precision, intent(in) :: xx, yy, zz
         m%xx%ind(atom) = xx
         m%yy%ind(atom) = yy
         m%zz%ind(atom) = zz
@@ -1028,7 +1028,7 @@ contains
     subroutine add_atom(m, atom, xx, yy, zz, znum, znum_r)
         type(model), intent(inout) :: m
         integer, intent(in) :: atom ! index of atom in unroated model.
-        real, intent(in) :: xx, yy, zz ! position of new atom
+        double precision, intent(in) :: xx, yy, zz ! position of new atom
         integer, intent(in) :: znum, znum_r ! znum and znum_r of new atom
         integer :: hx, hy, hz
         ! We need to add an atom to xx, yy, zz, znum, znum_r, and the hutches.
@@ -1045,9 +1045,9 @@ contains
 
         ! Add the atom to the model.
         call add_index(m%rot_i(atom), m%natoms + 1)
-        call add_index_real(m%xx, xx)
-        call add_index_real(m%yy, yy)
-        call add_index_real(m%zz, zz)
+        call add_index_dble(m%xx, xx)
+        call add_index_dble(m%yy, yy)
+        call add_index_dble(m%zz, zz)
         call add_index(m%znum, znum)
         call add_index(m%znum_r, znum_r)
         m%natoms = m%natoms + 1
@@ -1076,9 +1076,9 @@ contains
         ! ind. That is an inconvienence that we do need to deal with. It should
         ! only matter for rot_i hereafter, however, which we fix in the
         ! next forall loop.
-        call remove_index_real(m%xx, ind)
-        call remove_index_real(m%yy, ind)
-        call remove_index_real(m%zz, ind)
+        call remove_index_dble(m%xx, ind)
+        call remove_index_dble(m%yy, ind)
+        call remove_index_dble(m%zz, ind)
         call remove_index(m%znum, ind)
         call remove_index(m%znum_r, ind)
         do i=1,m%rot_i(atom)%nat
@@ -1171,9 +1171,9 @@ contains
     end subroutine add_index
 
 
-    subroutine add_index_real(il, i)
-        type(real_index_list), intent(inout) :: il
-        real, intent(in) :: i
+    subroutine add_index_dble(il, i)
+        type(dble_index_list), intent(inout) :: il
+        double precision, intent(in) :: i
         integer, dimension(:), allocatable :: scratch
         if( il%nat >= 1 ) then
             ! If there is space no need to reallocate. If not, reallocate.
@@ -1201,7 +1201,7 @@ contains
         if(allocated(scratch)) then
             deallocate(scratch)
         endif
-    end subroutine add_index_real
+    end subroutine add_index_dble
 
 
     subroutine remove_index(il, ind)
@@ -1212,18 +1212,18 @@ contains
     end subroutine remove_index
 
 
-    subroutine remove_index_real(il, ind)
-        type(real_index_list), intent(inout) :: il
+    subroutine remove_index_dble(il, ind)
+        type(dble_index_list), intent(inout) :: il
         integer, intent(in) :: ind
             il%ind( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
             il%nat = il%nat - 1
-    end subroutine remove_index_real
+    end subroutine remove_index_dble
 
 
     subroutine reject_position(m, atom, xx_cur, yy_cur, zz_cur)
         type(model), intent(inout) :: m
         integer, intent(in) :: atom
-        real, intent(in) :: xx_cur, yy_cur, zz_cur
+        double precision, intent(in) :: xx_cur, yy_cur, zz_cur
         ! The moved atom in the original model, m, should return to their old position
         ! when the random move is rejected
         m%xx%ind(atom) = xx_cur

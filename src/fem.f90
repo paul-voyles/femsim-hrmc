@@ -10,21 +10,21 @@ module fem_mod
     public :: print_sampled_map
     type pos_list
         integer :: nat
-        real, allocatable, dimension(:,:) :: pos ! 3 x nat array containing positions of atoms
+        double precision, allocatable, dimension(:,:) :: pos ! 3 x nat array containing positions of atoms
     end type pos_list
     integer, save :: nk  ! number of k points
     integer, save, public :: nrot  ! number of rotations
     type pix_array  ! pixel array class
-        real, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
+        double precision, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
-        real :: phys_diam
+        double precision :: phys_diam
         ! dr is the distance between pixels. Note, therefore, that there is half this
         ! distance between the pixels and the world edge. This is NOT the distance
         ! between the pixel centers. This is the distance between the edges of two
         ! different pixels. dr + phys_diam is the distance between the pixel centers!
-        real :: dr
+        double precision :: dr
     end type pix_array
-    real, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
+    double precision, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
     double precision, save, dimension(:,:,:), allocatable :: int_i, int_sq ! nk x npix x nrot.  int_sq == int_i**2
     double precision, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
     double precision, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
@@ -55,12 +55,12 @@ contains
 
     subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat)
         type(model), intent(in) :: m 
-        real, intent(in) :: res
+        double precision, intent(in) :: res
         double precision, dimension(:), intent(in) :: k 
         integer, intent(in) :: nki, ntheta, nphi, npsi 
         double precision, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        real r_max, const1, const2, const3
+        double precision :: r_max, const1, const2, const3
         integer bin_max
         integer i, j 
         integer const4 
@@ -136,11 +136,11 @@ contains
         integer, intent(in) :: ntheta, nphi, npsi
         integer, intent(out) :: istat
         integer :: i,j, k, jj
-        real,dimension(3) :: step_size
+        double precision, dimension(3) :: step_size
         integer :: ntheta_w(nphi*npsi)
         integer, intent(out) :: num_rot
-        real, dimension(:,:), allocatable :: rot_temp
-        real :: psi_temp
+        double precision, dimension(:,:), allocatable :: rot_temp
+        double precision :: psi_temp
         integer :: pp
 
         allocate(rot_temp(ntheta*nphi*npsi,3), stat=istat)
@@ -206,7 +206,7 @@ contains
 
     subroutine init_pix(m, res, istat)
         type(model), intent(in) :: m
-        real, intent(in) :: res
+        double precision, intent(in) :: res
         integer, intent(out) :: istat
         integer :: i, j, k
 
@@ -260,7 +260,7 @@ contains
 #endif
         implicit none
         type(model), intent(in) :: m
-        real, intent(in) :: res
+        double precision, intent(in) :: res
         double precision, dimension(:), intent(in) :: k
         double precision, dimension(:), INTENT(OUT) :: vk
         double precision, dimension(:,:), pointer :: scatfact_e
@@ -355,7 +355,7 @@ contains
         include 'mpif.h'
 #endif
         type(model), intent(inout) :: m_int
-        real, intent(in) :: res, px, py
+        double precision, intent(in) :: res, px, py
         double precision, dimension(nk), intent(in) :: k
         double precision, dimension(nk), intent(inout) :: int_i
         double precision, dimension(:,:), pointer :: scatfact_e
@@ -568,7 +568,7 @@ contains
 #endif
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
-        real, intent(in) :: res
+        double precision, intent(in) :: res
         double precision, dimension(:), intent(in) :: k
         double precision, dimension(:), intent(out) :: vk
         double precision, dimension(:,:), pointer :: scatfact_e
@@ -810,7 +810,7 @@ contains
     ! Reject the move. If the atom was simply moved, unmove it using old_pos and old_index.
         type(model), intent(in) :: m ! Just in because we undo the move elsewhere
         integer, intent(in) :: atom
-        real, intent(in) :: xx_cur, yy_cur, zz_cur
+        double precision, intent(in) :: xx_cur, yy_cur, zz_cur
         integer :: i, j, istat
         type(model) :: moved_atom
 
@@ -860,9 +860,9 @@ contains
     subroutine add_pos(p, xx, yy, zz, istat)
     ! Adds xx, yy, zz to p%ind and increments p%pos.
         type(pos_list), intent(inout) :: p
-        real, intent(in) :: xx, yy,  zz
+        double precision, intent(in) :: xx, yy,  zz
         integer, intent(out) :: istat
-        real, dimension(:,:), allocatable :: scratch
+        double precision, dimension(:,:), allocatable :: scratch
         if (p%nat .GT. 0) then
              allocate(scratch(p%nat+1,3), stat=istat)
              if (istat /= 0) continue
@@ -892,17 +892,17 @@ contains
 
     subroutine print_sampled_map(m, res)
         type(model), intent(in) :: m
-        real, intent(in) :: res
+        double precision, intent(in) :: res
         integer, dimension(:,:), allocatable :: map
         integer, dimension(:), allocatable :: sampled_atoms
         integer, pointer, dimension(:):: pix_atoms
         integer :: i, j, istat, x, y
         character(len=256) :: buffer
         character(len=2) :: str
-        real, dimension(:), allocatable :: rr_a
-        real, allocatable, dimension(:) :: rr_x, rr_y
-        real :: sqrt1_2_res
-        real :: x2, y2
+        double precision, dimension(:), allocatable :: rr_a
+        double precision, allocatable, dimension(:) :: rr_x, rr_y
+        double precision :: sqrt1_2_res
+        double precision :: x2, y2
 
         sqrt1_2_res = sqrt(0.5) * res
 
@@ -974,7 +974,7 @@ contains
 
     subroutine pixel_positions(xx, yy, il)
     ! Return the pixel(s) that encompass(es) position xx, yy in il.
-        real, intent(in) :: xx, yy
+        double precision, intent(in) :: xx, yy
         type(index_list), intent(out) :: il
         integer :: i, k
 
