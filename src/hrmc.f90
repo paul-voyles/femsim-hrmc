@@ -86,6 +86,8 @@ program hrmc
     call mpi_barrier(mpi_comm_world, mpierr)
     call mpi_comm_split(mpi_comm_world, color, myid, communicator, mpierr)
 
+    call mpi_comm_get_parent(parent_comm, mpierr)
+
     ! Get each core's rank within its new communicator
     call mpi_comm_rank(communicator, myid, mpierr)
     call mpi_comm_size(communicator, numprocs, mpierr)
@@ -446,9 +448,8 @@ program hrmc
 #endif
 
     ! Free the sub-communicators and finalize
-    call mpi_comm_get_parent(communicator, mpierr)
-    if(communicator .ne. mpi_comm_null) then
-        call mpi_comm_disconnect(communicator, mpierr)
+    if(parent_comm .ne. mpi_comm_null) then
+        call mpi_comm_disconnect(parent_comm, mpierr)
         write(*,*) "Disconnected from parent!"
     endif
     call mpi_finalize(mpierr)

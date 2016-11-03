@@ -8,7 +8,7 @@ MODULE HRMC_Global
   integer, parameter ::  HRMC_STEPS = 1000      ! # of hrmc steps between model / sim data dumps
   ! MPI variables
   integer :: myid, numprocs, mpierr
-  integer :: color, communicator
+  integer :: color, communicator, parent_comm
   character(len=16) :: color_str
 
 END MODULE HRMC_Global
