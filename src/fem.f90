@@ -217,9 +217,11 @@ contains
             ! Something weird was going on here if I didn't do this. It was a
             ! result of pa%phys_diam being larger than m%lx by a tiny amount
             ! due to rounding errors from the inputs. This seems to work.
-            write(stderr,*)
-            write(stderr,*) "WARNING: There was a rounding error in init_pix, it was manually corrected but you should check to make sure you don't have things set up so that your pixel diameter is larger than your model."
-            write(stderr,*)
+            if(myid .eq. 0) then
+                write(stderr,*)
+                write(stderr,*) "WARNING: There was a rounding error in init_pix, it was manually corrected but you should check to make sure you don't have things set up so that your pixel diameter is larger than your model."
+                write(stderr,*)
+            endif
         endif
         pa%npix_1D = floor( m%lx / pa%phys_diam )
         pa%npix = pa%npix_1D**2

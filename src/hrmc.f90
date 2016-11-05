@@ -123,7 +123,9 @@ program hrmc
     param_filename = trim(param_filename)
 
     if(myid .eq. 0) write(stdout,*) "Successfully initialized MPI_COMM_WORLD"
-    write(stdout,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
+    if(parent_comm .eq. mpi_comm_null) then
+        write(stdout,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
+    endif
 
     if(myid .eq. 0) then
         ! Set output filenames.
@@ -456,11 +458,11 @@ program hrmc
     ! Free the sub-communicators and finalize
     if(parent_comm .ne. mpi_comm_null) then
         call mpi_comm_disconnect(parent_comm, mpierr)
-        write(stdout,*) "Disconnected from parent!"
+        if(myid .eq. 0) write(stdout,*) "Disconnected from parent!"
     endif
     call mpi_finalize(mpierr)
 
-    write(stdout,*) "Successfully finished FEMSIM"
+    if(myid .eq. 0) write(stdout,*) "Successfully finished FEMSIM"
 end program hrmc
 
 
