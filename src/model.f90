@@ -107,7 +107,7 @@ contains
         ! If the model is not a perfect cube then the rest of the calculations
         ! wont work, so we really should check that.
         if((m%lx /= m%ly) .or. (m%lx /= m%lz)) then
-            write(0,*) "ERROR! The model is not a cube and will work correctly. Exiting."
+            write(stderr,*) "ERROR! The model is not a cube and will work correctly. Exiting."
             stop
         endif
         ! Read the atomic numbers and atom positions directly into the model.
@@ -259,7 +259,7 @@ contains
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
-        !write(*,*) "Rotation angles:", phi, psi, theta
+        !write(stdout,*) "Rotation angles:", phi, psi, theta
         cpsi = cos(psi)
         cphi = cos(phi)
         ctheta = cos(theta)
@@ -361,7 +361,7 @@ contains
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
-        ! write(*,*) "Rotation angles:", phi, psi, theta
+        ! write(stdout,*) "Rotation angles:", phi, psi, theta
         cpsi = cos(psi)
         cphi = cos(phi)
         ctheta = cos(theta)
@@ -691,9 +691,9 @@ contains
                         endif
                         nh = nh + 1
                         if(i .ne. hx .or. j .ne. hy .or. k .ne. hz) then
-                            write(*,*) "ERROR Hutches:"
-                            write(*,*) i,j,k
-                            write(*,*) hx, hy, hz
+                            write(stdout,*) "ERROR Hutches:"
+                            write(stdout,*) i,j,k
+                            write(stdout,*) hx, hy, hz
                         endif
                     endif
                 enddo
@@ -735,7 +735,7 @@ contains
         integer :: i_start, i_end, j_start, j_end, trash
         double precision :: x_start, x_end, y_start, y_end
 
-        !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
+        !write(stdout,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
         ! Allocatae temp_atoms with the max number of atoms so that no matter
         ! how many we find, there will always be enough room.
@@ -831,7 +831,7 @@ contains
         double precision :: x_start, x_end, y_start, y_end
 
 #ifdef DEBUG
-        write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
+        write(stdout,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
 #endif
         allocate(temp_atoms(m%natoms), stat=istat)
         call check_for_error(istat, 'Unable to allocate memory for atom indices in hutch_list_pixel')
@@ -918,7 +918,7 @@ contains
         do i=1, ha%h(hx,hy,hz)%nat
             if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
         enddo
-        if(found) write(*,*) "WARNING: ERROR: Atom", atom, "already exists in hutch", hx, hy, hz
+        if(found) write(stdout,*) "WARNING: ERROR: Atom", atom, "already exists in hutch", hx, hy, hz
 #endif
 
         ! ha%h(hx,hy,hz)%nat is set to 0 in a do loop in model_init_hutches,
@@ -962,7 +962,7 @@ contains
         do i=1, ha%h(hx,hy,hz)%nat
             if( ha%h(hx,hy,hz)%at(i) .eq. atom ) found = .true.
         enddo
-        if( .not. found) write(*,*) "WARNING: Tried to add atom",atom,"to hutch", hx, hy, hy, "but failed!"
+        if( .not. found) write(stdout,*) "WARNING: Tried to add atom",atom,"to hutch", hx, hy, hy, "but failed!"
 #endif
     end subroutine hutch_add_atom
 
@@ -987,7 +987,7 @@ contains
             if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
         enddo
         if(.not. found) then
-            write(*,*) "WARNING: ERROR: Atom", atom, "does not exist in hutch", hx, hy, hz, "and you are trying to remove it!"
+            write(stdout,*) "WARNING: ERROR: Atom", atom, "does not exist in hutch", hx, hy, hz, "and you are trying to remove it!"
         endif
 #endif
 
@@ -1016,10 +1016,10 @@ contains
 
 #ifdef DEBUG
         if( m%xx%ind(atom) .ne. xx .or. m%yy%ind(atom) .ne. yy .or.  m%zz%ind(atom) .ne. zz) then
-            write(*,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
-            write(*,*) m%xx%ind(atom), xx
-            write(*,*) m%yy%ind(atom), yy
-            write(*,*) m%zz%ind(atom), zz
+            write(stdout,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
+            write(stdout,*) m%xx%ind(atom), xx
+            write(stdout,*) m%yy%ind(atom), yy
+            write(stdout,*) m%zz%ind(atom), zz
         endif
 #endif
     end subroutine move_atom
@@ -1035,7 +1035,7 @@ contains
         ! We need to increment natoms.
         ! We need to add a spot to rot_i with the correct index we used in xx, etc.
 #ifdef DEBUG
-        write(*,*) "A wild atom appeared!"
+        write(stdout,*) "A wild atom appeared!"
 #endif
 
         ! We place the extra atom at the end of the above arrays, and therefore
@@ -1066,7 +1066,7 @@ contains
         integer :: i, j, temp, hx, hy, hz
         integer, dimension(:,:), allocatable :: temp_atom_hutch
 #ifdef DEBUG
-        write(*,*) "An atom ran away!"
+        write(stdout,*) "An atom ran away!"
 #endif
 
         temp = ind

@@ -47,10 +47,10 @@ CONTAINS
         ! in the list atoms. Also sets nlist == size(atoms)+1.
         call hutch_list_3D(m, m%xx%ind(moved_atom), m%yy%ind(moved_atom), m%zz%ind(moved_atom), radius, atoms, istat, nlist)
         if (istat .eq. 1) then
-            write(0, *) 'memory allocation fails!'
+            write(stderr, *) 'memory allocation fails!'
             return
         else if(istat .eq. -1) then
-            write(0, *) 'no atom is found'
+            write(stderr, *) 'no atom is found'
             check_cutoffs = .true. 
             return
         endif

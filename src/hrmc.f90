@@ -92,9 +92,6 @@ program hrmc
     call mpi_comm_rank(communicator, myid, mpierr)
     call mpi_comm_size(communicator, numprocs, mpierr)
     call get_environment_variable("OMPI_MCA_orte_app_num", color_str)
-    if(myid .eq. 0) write(*,*) "Successfully initialized MPI_COMM_WORLD"
-    write(*,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
-
 
     call mpi_barrier(communicator, mpierr)
 #else
@@ -103,23 +100,32 @@ program hrmc
     numprocs = 1
 #endif
 
-    if(myid .eq. 0) then
-        call get_command_argument(1, c, length, istat)
-        if (istat == 0) then
-            jobID = "_"//trim(c)
-        else
-            write(0, *) "istat for jobid get_command_arg was nonzero"
-            stop 1
-        end if
-        call get_command_argument(2, c, length, istat)
-        if (istat == 0) then
-            param_filename = trim(c)
-        else
-            write(0, *) "istat for paramfile get_command_arg was nonzero"
-            stop 1
-        end if
-        param_filename = trim(param_filename)
+    call get_command_argument(1, c, length, istat)
+    if (istat == 0) then
+        jobID = "_"//trim(c)
+    else
+        write(stderr, *) "istat for jobid get_command_arg was nonzero"
+        stop 1
+    endif
 
+    if((myid .eq. 0) .and. (parent_comm .ne. mpi_comm_null)) then
+        open(unit=stdout, file=trim("stdout"//trim(jobID))//".log", form="formatted")
+        open(unit=stderr, file=trim("stderr"//trim(jobID))//".log", form="formatted")
+    endif
+
+    call get_command_argument(2, c, length, istat)
+    if (istat == 0) then
+        param_filename = trim(c)
+    else
+        write(stderr, *) "istat for paramfile get_command_arg was nonzero"
+        stop 1
+    endif
+    param_filename = trim(param_filename)
+
+    if(myid .eq. 0) write(stdout,*) "Successfully initialized MPI_COMM_WORLD"
+    write(stdout,'(A10, I2, A4, I2, A11, I2, A6, I2, A18, I2)') "I am core ", myid, " of ", numprocs, " with color", color, ", root", 0, ", and communicator", communicator
+
+    if(myid .eq. 0) then
         ! Set output filenames.
         write(vki_fn, "(A10)") "vk_initial"
         vki_fn = trim(trim(vki_fn)//jobID)//".txt"
@@ -137,7 +143,7 @@ program hrmc
     !------------------- Read inputs and initialize. -----------------!
 
     ! Set input filenames.
-    if(myid.eq.0) write(*,*) "Paramfile: ", trim(param_filename)
+    if(myid.eq.0) write(stdout,*) "Paramfile: ", trim(param_filename)
 #ifndef SERIAL
     call mpi_bcast(param_filename, 256, MPI_CHARACTER, 0, communicator, mpierr)
 #endif
@@ -153,8 +159,8 @@ program hrmc
     call recenter_model(dble(0.0), dble(0.0), dble(0.0), m)
 
     if(myid .eq. 0) then
-    write(*,*) "Model filename: ", trim(model_filename)
-    write(*,*)
+    write(stdout,*) "Model filename: ", trim(model_filename)
+    write(stdout,*)
     endif
 
     scale_fac = scale_fac_initial
@@ -171,9 +177,9 @@ program hrmc
     if(myid.eq.0) then
         call print_sampled_map(m, res)
         if(pa%npix /= 1) then
-            if(numprocs > 3*nrot) write(0,*) "WARNING: You are using too many cores!"
+            if(numprocs > 3*nrot) write(stderr,*) "WARNING: You are using too many cores!"
         else
-            if(numprocs > nrot) write(0,*) "WARNING: You are using too many cores!"
+            if(numprocs > nrot) write(stderr,*) "WARNING: You are using too many cores!"
         endif
     endif
 
@@ -216,18 +222,18 @@ program hrmc
 
         i = step_start
         if(myid .eq. 0)then
-            write(*,*)
-            write(*,*) "Initialization complete. Starting Monte Carlo."
-            write(*,*) "Initial Conditions:"
-            write(*,*) "   Step start =       ", i
-            write(*,*) "   Step end =         ", step_end
-            write(*,*) "   Decrement # =      ", temp_move_decrement
-            write(*,*) "   Energy =           ", te1
-            write(*,*) "   LSqF V(k) =        ", chi2_no_energy
-            write(*,*) "   Cost Function =    ", chi2_old
-            write(*,*) "   Temperature =      ", temperature
-            write(*,*) "   Max Move =         ", max_move
-            write(*,*)
+            write(stdout,*)
+            write(stdout,*) "Initialization complete. Starting Monte Carlo."
+            write(stdout,*) "Initial Conditions:"
+            write(stdout,*) "   Step start =       ", i
+            write(stdout,*) "   Step end =         ", step_end
+            write(stdout,*) "   Decrement # =      ", temp_move_decrement
+            write(stdout,*) "   Energy =           ", te1
+            write(stdout,*) "   LSqF V(k) =        ", chi2_no_energy
+            write(stdout,*) "   Cost Function =    ", chi2_old
+            write(stdout,*) "   Temperature =      ", temperature
+            write(stdout,*) "   Max Move =         ", max_move
+            write(stdout,*)
             ! Reset energy/chi_squared and acceptance rate files
             open(36,file=trim(chi_squared_file), form='formatted', status='unknown')
                 write(36,*) "step, chi2, energy"
@@ -242,7 +248,7 @@ program hrmc
         e2 = e1
         do while (i .le. step_end)
             i = i + 1
-            if(myid .eq. 0) write(*,*) "Starting step", i
+            if(myid .eq. 0) write(stdout,*) "Starting step", i
 
             chi2_prev_step = chi2_old
             call random_move(m, atom, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, max_move)
@@ -331,21 +337,21 @@ program hrmc
                     acceptance_array(mod(i,100)+1) = 1
 
                     if(del_chi < 0.0) then
-                        write(*,*) "MC move accepted outright."
+                        write(stdout,*) "MC move accepted outright."
                     else
-                        write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                        write(stdout,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                     endif
 
-                    write(*,*) "Energy = ", te2
-                    write(*,*) "Del-V(k) = ", chi2_no_energy
-                    write(*,*) "Del-chi = ", del_chi
-                    write(*,*) "chi2_prev_step = ", chi2_prev_step
-                    write(*,*) "chi2_new = ", chi2_new
+                    write(stdout,*) "Energy = ", te2
+                    write(stdout,*) "Del-V(k) = ", chi2_no_energy
+                    write(stdout,*) "Del-chi = ", del_chi
+                    write(stdout,*) "chi2_prev_step = ", chi2_prev_step
+                    write(stdout,*) "chi2_new = ", chi2_new
 
                 else if(.not. energy_accepted) then
-                    write(*,*) "MC move rejected solely due to energy.", te2
+                    write(stdout,*) "MC move rejected solely due to energy.", te2
                 else
-                    write(*,*) "MC move rejected.", chi2_old, chi2_new
+                    write(stdout,*) "MC move rejected.", chi2_old, chi2_new
                     acceptance_array(mod(i,100)+1) = 0
                 endif
 
@@ -378,8 +384,8 @@ program hrmc
 
                 ! Write to param_resume.in file
                 if(myid .eq. 0) then
-                    write(*,*) "Lowering temp to", temperature, "at step", i
-                    write(*,*) "Lowering max_move to", max_move, "at step", i
+                    write(stdout,*) "Lowering temp to", temperature, "at step", i
+                    write(stdout,*) "Lowering max_move to", max_move, "at step", i
 
                     open(unit=53,file=trim(paramfile_restart),form='formatted',status='unknown')
                         write(53,*) '# HRMC parameter file, generated to restart a sim ', trim(jobid(2:))
@@ -405,7 +411,7 @@ program hrmc
 
         ! The HRMC loop finished. Write final data.
         if(myid .eq. 0) then
-            write(*,*) "HRMC Finished!"
+            write(stdout,*) "HRMC Finished!"
 
             ! Close the energy/chi_squared and acceptance rate files
             close(36)
@@ -450,11 +456,11 @@ program hrmc
     ! Free the sub-communicators and finalize
     if(parent_comm .ne. mpi_comm_null) then
         call mpi_comm_disconnect(parent_comm, mpierr)
-        write(*,*) "Disconnected from parent!"
+        write(stdout,*) "Disconnected from parent!"
     endif
     call mpi_finalize(mpierr)
 
-    write(*,*) "Successfully finished FEMSIM"
+    write(stdout,*) "Successfully finished FEMSIM"
 end program hrmc
 
 

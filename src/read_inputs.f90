@@ -1,6 +1,7 @@
 !This module loads the experiment data.
 
 module ReadInputs
+use  HRMC_Global
 
 contains
 
@@ -100,7 +101,7 @@ contains
 
             if(line_size .eq. 1 .and. .not. femsim) stop "V(k) data must be included in the FEM data file."
             if(line_size .ne. 1 .and. line_size .ne. 3) then
-                write(0,*) "The number of columns in the FEM datafile must be 1 or 3 (got", line_size,")"
+                write(stderr,*) "The number of columns in the FEM datafile must be 1 or 3 (got", line_size,")"
                 stop
             endif
 
@@ -123,7 +124,7 @@ contains
                 endif
             end do
         else
-            write(0,*) "Failed to open the FEM data file ", femfile(1:filenamelength)
+            write(stderr,*) "Failed to open the FEM data file ", femfile(1:filenamelength)
         endif
         close(30)
     end subroutine read_inputs

@@ -59,9 +59,9 @@ contains
             enddo
         enddo
 
-        if(myid.eq.0) write(*,*) "Atom types in EAM file: sym, Z, reorder#"
+        if(myid.eq.0) write(stdout,*) "Atom types in EAM file: sym, Z, reorder#"
         do i=1, nelements
-            if(myid.eq.0) write(*,*) "  ",atom_syms(i), atomic_numbers(i), reorder(i)
+            if(myid.eq.0) write(stdout,*) "  ",atom_syms(i), atomic_numbers(i), reorder(i)
         enddo
 
         allocate(znum(nelements))

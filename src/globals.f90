@@ -10,5 +10,7 @@ MODULE HRMC_Global
   integer :: myid, numprocs, mpierr
   integer :: color, communicator, parent_comm
   character(len=16) :: color_str
+  integer :: stdout = 6
+  integer :: stderr = 0
 
 END MODULE HRMC_Global
