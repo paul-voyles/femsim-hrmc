@@ -23,8 +23,8 @@ program hrmc
     character (len=256) :: jobID, c
     character (len=256) :: vki_fn, vkf_fn, final_model_fn, chi_squared_file, acceptance_rate_fn, femfile
     character (len=256) :: paramfile_restart
-    real :: temperature
-    real :: max_move
+    double precision :: temperature
+    double precision :: max_move
     double precision :: Q, res, alpha
     double precision, pointer, dimension(:) :: k, vk, vk_exp, vk_exp_err
     double precision, allocatable, dimension(:,:) :: cutoff_r 
@@ -51,7 +51,7 @@ program hrmc
     double precision :: te1, te2
     logical :: accepted, energy_accepted
     integer, dimension(100) :: acceptance_array
-    real :: avg_acceptance = 1.0
+    double precision :: avg_acceptance = 1.0
 #endif
 
     syms = (/ "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",  &

@@ -21,7 +21,7 @@ contains
         integer :: i, j, k
         integer, dimension(:), allocatable :: znum
         integer :: istat
-        real, dimension(:), allocatable :: mass, latt_const
+        double precision, dimension(:), allocatable :: mass, latt_const
         integer, dimension(:), allocatable :: reorder
         integer, dimension(:), allocatable :: atomic_numbers
         character (len=2), dimension(:), allocatable :: atom_syms

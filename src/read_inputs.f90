@@ -12,8 +12,8 @@ contains
         logical, intent(in) :: femsim
         character (len=256), intent(out) :: model_fn, eam_file, femfile
         integer, intent(out) :: step_start, step_end, temp_move_decrement
-        real, intent(out) :: temperature
-        real, intent(out) :: max_move
+        double precision, intent(out) :: temperature
+        double precision, intent(out) :: max_move
         double precision, intent(out), dimension(:,:), allocatable :: cutoff_r
         integer, intent(out) :: iseed2
         double precision, intent(out) :: alpha

@@ -106,7 +106,7 @@ CONTAINS
     type(model), intent(inout) :: m
     integer, intent(out) :: w
     double precision, intent(out) :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
-    real, intent(in) :: alpha
+    double precision, intent(in) :: alpha
     integer :: iseed
     double precision :: rand1, rand2, rand3, rand4
     double precision :: aa, bb, cc

@@ -2,11 +2,11 @@ module eam_mod
 
     use model_mod 
     implicit none
-    real, dimension(:,:), pointer :: f
-    real, dimension(:,:,:), pointer :: rho
-    real, dimension(:,:,:), pointer :: phi
+    double precision, dimension(:,:), pointer :: f
+    double precision, dimension(:,:,:), pointer :: rho
+    double precision, dimension(:,:,:), pointer :: phi
     double precision, dimension(:), pointer :: e1, e2
-    real :: drho, dr, eam_max_r
+    double precision :: drho, dr, eam_max_r
     logical, dimension(:), pointer :: not_counted
     integer :: nrho,  nr, nelements
                                   
@@ -21,7 +21,7 @@ contains
         integer :: i, j, k
         integer, dimension(:), allocatable :: znum
         integer :: istat
-        real, dimension(:), allocatable :: mass, latt_const
+        double precision, dimension(:), allocatable :: mass, latt_const
         integer, dimension(:), allocatable :: reorder
         integer, dimension(:), allocatable :: atomic_numbers
         character (len=2), dimension(:), allocatable :: atom_syms
@@ -121,8 +121,8 @@ contains
         integer :: i, j
         integer,  dimension(:), pointer :: atoms
         integer:: nlist, rbin, rhobin
-        real :: xij, yij, zij, r, r2
-        real :: phi1, phi2, rho1, rho2
+        double precision :: xij, yij, zij, r, r2
+        double precision :: phi1, phi2, rho1, rho2
         double precision, intent(out) :: te1
         integer :: istat
         do i=1, m%natoms
@@ -173,10 +173,10 @@ contains
         integer :: i, j
         integer,  dimension(:), pointer :: atoms1, atoms2, atoms3, atoms4
         integer:: nlist1, nlist2, nlist3, nlist4, rbin, rhobin
-        real :: xij, yij, zij, r, r2
-        real :: phi1, phi2, rho1, rho2
+        double precision :: xij, yij, zij, r, r2
+        double precision :: phi1, phi2, rho1, rho2
         double precision, intent(out) :: te2
-        real, intent(in) :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new 
+        double precision, intent(in) :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new 
         integer :: istat
         not_counted = .true.
 

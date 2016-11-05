@@ -730,7 +730,7 @@ contains
             enddo
         enddo
         write(stdout,*) "Calling Intensity on ", ntpix, " pixels."
-        write(stdout,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
+        write(stdout,*) "Average number of pixels to call intensity on per model:", dble(ntpix)/211.0
 #endif
 
         ! In this loop, 'i' is the model that has intensity called on it.
