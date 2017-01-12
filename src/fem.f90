@@ -223,7 +223,11 @@ contains
                 write(stderr,*)
             endif
         endif
-        pa%npix_1D = floor( m%lx / pa%phys_diam )
+        pa%npix_1D = anint( m%lx / pa%phys_diam )
+        if( abs(pa%npix_1d - (m%lx/pa%phys_diam)) * 1000000 > 1.0 ) then
+            write(stderr, *) "Error! The calculated number of pixels is very likely incorrect.", pa%npix_1D
+            stop
+        endif
         pa%npix = pa%npix_1D**2
 
         pa%dr = m%lx/pa%npix_1D - pa%phys_diam
@@ -925,7 +929,7 @@ contains
             if(allocated(rr_x)) deallocate(rr_x)
             if(allocated(rr_y)) deallocate(rr_y)
             if(allocated(rr_a)) deallocate(rr_a)
-            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), rr_a(size(pix_atoms)), stat=istat)
+            allocate( rr_x(size(pix_atoms)), rr_y(size(pix_atoms)), rr_a(size(pix_atoms)), stat=istat)
 
             do j=1, size(pix_atoms)
                 x2=m%xx%ind(pix_atoms(j))-pa%pix(i,1)
@@ -943,13 +947,6 @@ contains
                     map(x,y) = map(x,y) + 1
                 endif
             enddo
-        enddo
-
-        do i=1, m%natoms
-            if (sampled_atoms(i) .ne. 1) then
-                write(stderr,*) "Error in inputs: At least one atom is not being used or is being used more than once in the intensity call."
-                stop
-            endif
         enddo
 
         do i=1, ceiling(m%lx)
@@ -971,6 +968,13 @@ contains
         enddo
 
         write(stdout,*)
+
+        do i=1, m%natoms
+            if (sampled_atoms(i) .ne. 1) then
+                write(stderr,*) "Error in inputs: At least one atom is not being used or is being used more than once in the intensity call."
+                stop
+            endif
+        enddo
     end subroutine print_sampled_map
 
 

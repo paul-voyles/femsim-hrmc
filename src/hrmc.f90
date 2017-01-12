@@ -158,7 +158,6 @@ program hrmc
     ! Read input model
     call read_model(model_filename, m, istat)
     call check_model(m, istat)
-    call recenter_model(dble(0.0), dble(0.0), dble(0.0), m)
 
     if(myid .eq. 0) then
     write(stdout,*) "Model filename: ", trim(model_filename)

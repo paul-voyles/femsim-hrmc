@@ -173,7 +173,7 @@ contains
 
         m%rotated = .FALSE.
 
-        call check_model(m,istat)
+        call recenter_model(dble(0.0), dble(0.0), dble(0.0), m)
 
         ! Calls hutch_position and hutch_add_atom in loops.
         ! It also does some allocation.
@@ -850,7 +850,7 @@ contains
         call hutch_position(m, x_start, y_start, dble(0.0), i_start, j_start, trash)
         call hutch_position(m, x_end, y_end, dble(0.0), i_end, j_end, trash)
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
-        
+
         ! Fill in the list.
         nlist = 1
         do i = 1, m%ha%nhutch_x
