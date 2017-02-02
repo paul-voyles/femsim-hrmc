@@ -1,4 +1,8 @@
-Documentation can be found in our [preprint](http://arxiv.org/pdf/1607.04290v1.pdf) (this link will be updated and a citation will be provided when the manuscript is published).
+If you use FEMSIM or HRMC, please cite this [publication](http://www.sciencedirect.com/science/article/pii/S001046551630385X):
+
+    J. J. Maldonis, J. Hwang, P. M. Voyles, FEMSIM + HRMC: Simulation of and structural refinement using fluctuation electron microscopy for amorphous materials. Comput. Phys. Commun. (2016), doi:10.1016/j.cpc.2016.12.006.
+
+This publication can also be used for further documentation.
 
 ## Input and Output Parameters and Files
 
