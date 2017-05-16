@@ -7,7 +7,7 @@ This publication can also be used for further documentation.
 ## Input and Output Parameters and Files
 
 ###  Compiling
-All code is written in FORTAN and can be compiled using an Intel Fortran 90 compiler that supports MPI (for example, Intel’s mpif90).  Compilation should be done using GNU Make and the makefile provided in the `src` directory.  A make target is required, and can be either `hrmc` or `femsim`.  An optional keyword `debug` will compile the code with debugging enabled.
+All code is written in FORTAN and can be compiled using an Intel Fortran 90 compiler that supports MPI (for example, Intel’s mpif90).  Compilation has only been tested on linux.  Compilation should be done using GNU Make and the makefile provided in the `src` directory.  A make target is required, and can be either `hrmc` or `femsim`.  An optional keyword `debug` will compile the code with debugging enabled.
 
 For example, `make hrmc debug –C src` (run from the root directory) will create an executable with the name `hrmc`, compiled without optimizations and with debugging enabled.
 
